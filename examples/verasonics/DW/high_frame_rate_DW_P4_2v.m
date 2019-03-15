@@ -23,8 +23,8 @@ uff_filename=[folderdata '/' filedata];
 P.startDepth = 0;   % Acquisition depth in wavelengths
 P.endDepth = 192;   % This should preferrably be a multiple of 128 samples.
 
-P.numAcqs = 100;      % no. of Acquisitions in a Receive frame (this is a "superframe")
-P.numFrames = 6;      % no. of Receive frames (real-time images are produced 1 per frame) - the number of superframes
+P.numAcqs = 500;      % no. of Acquisitions in a Receive frame (this is a "superframe")
+P.numFrames = 2;      % no. of Receive frames (real-time images are produced 1 per frame) - the number of superframes
 
 % -----------------------------------------------------------------------------
 
@@ -291,8 +291,8 @@ pipe.transmit_apodization.window=uff.window.none;
 % Start the processing pipeline
 b_data=pipe.go({midprocess.das});
 
-% show
-b_data.plot();
+%% show
+b_data.plot([],[],60,'sqrt');
 drawnow();
 
 %% Calculate displacement
@@ -300,15 +300,29 @@ pdst = postprocess.autocorrelation_displacement_estimation()
 pdst.input = b_data;
 pdst.channel_data = channel_data;
 pdst.x_gate = 2;
-pdst.z_gate = 4;
-pdst.packet_size = 6;
+pdst.z_gate = 2;
+pdst.packet_size = 2;
 displacement = pdst.go();
 
 %% show
 f100 = figure(100);
 displacement.plot(f100,'Displacement',[],'none');
-caxis([-0.3*10^-6 0.3*10^-6]); % Updating the colorbar
+caxis([-10*10^-6 10*10^-6]); % Updating the colorbar
 colormap(gca(f100),'jet');       % Changing the colormap
+
+%%
+
+disp_img = displacement.get_image('none');
+%%
+
+figure;
+subplot(211);
+imagesc(disp_img(:,:,100))
+
+subplot(212);hold all;
+plot(squeeze(disp_img(192,185,:)))
+plot(squeeze(disp_img(136,80,:)))
+
 
 %%
 answer = questdlg('Do you want to save this dataset?');
