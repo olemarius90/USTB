@@ -50,46 +50,34 @@ classdef fresnel < handle
             disp('---------------------------------------------------------------');
             
             %% checking we have all we need
-            assert(numel(h.probe)>0,'The PROBE parameter is not set.');
-            assert(numel(h.phantom)>0,'The PHANTOM parameter is not set.');
-            assert(numel(h.pulse)>0,'The PULSE parameter is not set.');
-            assert(numel(h.sequence)>0,'The SEQUENCE parameter is not set.');
-            assert(numel(h.sampling_frequency)>0,'The SAMPLING_FREQUENCY parameter is not set.');
-            
-            % phantom dimensions
-            if(length(h.phantom)>1)
-                assert(mod(h.N_events,h.N_waves)==0,'The number of waves and phantoms does not macth. length(phantom)=length(waves)*frames');
-            end
-            
+            assert(~isempty(h.probe),'The PROBE parameter is not set.');
+            assert(~isempty(h.phantom),'The PHANTOM parameter is not set.');
+            assert(length(h.phantom)==1,'Only static phantoms are supported');
+            assert(~isempty(h.pulse),'The PULSE parameter is not set.');
+            assert(~isempty(h.sequence),'The SEQUENCE parameter is not set.');
+            assert(~isempty(h.sampling_frequency),'The SAMPLING_FREQUENCY parameter is not set.');
+            assert(length(h.phantom)==1,'Only single frames are supported');
+
             % checking number of elements
             assert(h.probe.N_elements==h.sequence(1).N_elements,'Mismatch in the number of elements in probe and the size of delay and apodization vectors in beam');
            
             %% unwrapping the signal
-            focusing_delay=zeros(h.N_elements,1,h.N_waves);
-            apodization=zeros(h.N_elements,1,h.N_waves);
-            for n_w=1:h.N_waves 
-                focusing_delay(:,1,n_w)=h.sequence(n_w).delay_values;
-                apodization(:,1,n_w)=h.sequence(n_w).apodization_values;
+            focusing_delay=zeros(1,h.N_elements,h.N_waves);
+            apodization=zeros(1,h.N_elements,h.N_waves);
+            for n_wave=1:h.N_waves 
+                focusing_delay(1,:,n_wave)=h.sequence(n_wave).delay_values;
+                apodization(1,:,n_wave)=h.sequence(n_wave).apodization_values;
             end
             
-            %% reference sound speed
-            c0=h.phantom(1).sound_speed; % choose the first speed of sound as reference
+            c0 = h.phantom.sound_speed;
+            f0 = h.pulse.center_frequency;
+            w0 = 2*pi*f0;
+            k0 = w0/c0;
+            fs = h.sampling_frequency;
+            bw = h.pulse.fractional_bandwidth;
             
             %% minimum distance for including geometric dispersion
             delta0=4*pi*0.1e-3;
-            
-            %% time vector
-            max_range=0;
-            min_range=Inf;
-            for n_e=1:h.N_events
-                for n_p=1:h.N_points
-                    max_range=max([max_range; sqrt(sum((ones(h.N_elements,1)*h.phantom(n_e).points(n_p,1:3)-h.probe.geometry(:,1:3)).^2,2))]);
-                    min_range=min([min_range; sqrt(sum((ones(h.N_elements,1)*h.phantom(n_e).points(n_p,1:3)-h.probe.geometry(:,1:3)).^2,2))]);
-                end
-            end
-            time_1w=(min_range/c0-8/h.pulse.center_frequency/h.pulse.fractional_bandwidth+min(focusing_delay(:))):(1/h.sampling_frequency):(max_range/c0+4/h.pulse.center_frequency/h.pulse.fractional_bandwidth + max(focusing_delay(:)));                                                  % time vector [s]
-            time_2w=(2*min_range/c0-8/h.pulse.center_frequency/h.pulse.fractional_bandwidth+min(focusing_delay(:))):(1/h.sampling_frequency):(2*max_range/c0+4/h.pulse.center_frequency/h.pulse.fractional_bandwidth+ max(focusing_delay(:)));                                               % time vector [s]
-            N_samples=numel(time_2w);                                                                              % number of time samples
 
             % save the data into a CHANNEL_DATA structure
             out_dataset=uff.channel_data();
@@ -98,115 +86,105 @@ classdef fresnel < handle
             out_dataset.phantom=h.phantom();
             out_dataset.sequence=h.sequence();
             out_dataset.sampling_frequency=h.sampling_frequency();
-            out_dataset.sound_speed=c0;
-            wave_delays=false;
+            out_dataset.sound_speed=h.phantom.sound_speed;
+          
+            
+            % computing geometry relations to the point
+            distance  = sqrt((h.phantom.x.'-h.probe.x).^2+(h.phantom.y.'-h.probe.y).^2+(h.phantom.z.'-h.probe.z).^2);
+            theta = atan2(h.phantom.x.'-h.probe.x, h.phantom.z.'-h.probe.z)-h.probe.theta;
+            phi = asin((h.phantom.y.'-h.probe.y)./distance)-h.probe.phi;
+            
+            % directivity between probe and the point
+            directivity = sinc(k0*h.probe.width/2/pi.*tan(theta)).*sinc(k0*h.probe.height/2/pi.*tan(phi)./cos(theta));
+            
+            % delay between probe and the point
+            propagation_delay = permute(distance/c0, [3,1,2]);
+            
+            % attenuation (absorption & geometrical dispersion)
+            attenuation = permute(10.^(-h.phantom.alpha*(distance*1e2)*(f0*1e-6)).*directivity.*delta0./(4*pi*distance), [3,1,2]);
+            
+            min_range = min(distance(:));
+            max_range = max(distance(:));
+            min_delay = min(focusing_delay(:));
+            max_delay = max(focusing_delay(:));
+            
+            time_1w = ((min_range/c0 - 8/f0/bw + min_delay):1/fs:(max_range/c0 + 8/f0/bw + max_delay)).';                                                  % time vector [s]
+            time_2w = ((2*min_range/c0 - 8/f0/bw + min_delay):1/fs:(2*max_range/c0 + 8/f0/bw + max_delay)).';                                               % time vector [s]
+            N_samples = length(time_2w);                                                                              % number of time samples
             
             % check if there wave delays are imposed in the sequence
             % definition
-            for n_w=1:h.N_waves
-                if abs(h.sequence(n_w).delay)>0
-                    wave_delays=true;
-                    continue;
-                end
-            end
-            if wave_delays
-                out_dataset.initial_time=0;
+            if any(abs([h.sequence.delay])>0)
+                out_dataset.initial_time = 0;
+                wave_delays=true;
             else
-                out_dataset.initial_time=time_2w(1);
+                out_dataset.initial_time = time_2w(1);
+                wave_delays  = false;
             end
             
-            out_dataset.data=zeros(N_samples,h.N_elements,h.N_waves,h.N_frames);
-            out_dataset.PRF=h.PRF;
-                  
-            % the frame loop
-            tools.workbar();
-            N=h.N_points*h.N_waves*h.N_frames;
-            for n_f=1:h.N_frames
+            out_dataset.data = zeros([N_samples,h.N_elements,h.N_waves]);
+            out_dataset.PRF = h.PRF;
+            
+            F = griddedInterpolant();
+            F.Method = 'linear';
+            F.ExtrapolationMethod = 'none';
+            F.GridVectors = {time_1w};
+
+            % the wave loop
+            tmp = zeros([N_samples,h.N_elements,h.phantom.N_points]);
+            for n_wave=1:h.N_waves
                 
-                % the wave loop
-                for n_w=1:h.N_waves 
+                % computing the transmit signal
+                delayed_time = time_1w - (propagation_delay + h.sequence(n_wave).delay_values.');
+                transmit_signal = sum(h.pulse.signal(delayed_time).*apodization(:,:,n_wave).*attenuation, 2);
                 
-                    % support for static phantoms
-                    if(h.N_events==1)
-                       current_phantom=h.phantom;
-                    else
-                       current_phantom=h.phantom((n_f-1)*h.N_waves+n_w);
-                    end
-
-                    % wavenumber
-                    k=2*pi*h.pulse.center_frequency/current_phantom.sound_speed;  
-
-                    %% points loop
-                    for n_p=1:h.N_points
-                        % progress bar
-                        n=(n_p+h.N_points*(n_w-1)+h.N_points*h.N_waves*(n_f-1));
-                        if 1%mod(n,round(N/100))==1
-                            tools.workbar(n/N,sprintf('Fresnel simulator (%s)',h.version),'USTB');
-                        end
-                        
-                        % computing geometry relations to the point
-                        distance  = sqrt(sum((h.probe.geometry(:,1:3)-ones(h.N_elements,1)*current_phantom.points(n_p,1:3)).^2,2));
-                        theta     = atan2(current_phantom.x(n_p)-h.probe.x, current_phantom.z(n_p)-h.probe.z)-h.probe.theta;
-                        phi       = asin((current_phantom.y(n_p)-h.probe.y)./distance)-h.probe.phi;
-
-                        % directivity between probe and the point
-                        directivity = sinc(k*h.probe.width/2/pi.*tan(theta)).*sinc(k*h.probe.height/2/pi.*tan(phi)./cos(theta));
-                        
-                        % delay between probe and the point
-                        propagation_delay = distance/current_phantom.sound_speed;%
-
-                        % attenuation (absorption & geometrical dispersion)
-                        attenuation = 10.^(-current_phantom.alpha*(distance/1e-2)*(h.pulse.center_frequency/1e6)).*directivity.*delta0./(4*pi*distance);
-                        
-                        % computing the transmit signal 
-                        delayed_time=ones(h.N_elements,1)*time_1w-(propagation_delay+h.sequence(n_w).delay_values)*ones(1,numel(time_1w));                
-                        transmit_signal=sum(bsxfun(@times,h.pulse.signal(delayed_time),apodization(:,:,n_w).*attenuation),1);  
-
-                        % computing the receive signal
-                        delayed_time=ones(h.N_elements,1)*time_2w-propagation_delay*ones(1,N_samples);                
-                        if wave_delays
-                            delayed_time=delayed_time+h.sequence(n_w).delay-time_2w(1);
-                        end
-                        out_dataset.data(:,:,n_w,n_f)=out_dataset.data(:,:,n_w,n_f)+bsxfun(@times,interp1(time_1w,transmit_signal,delayed_time,'linear',0),attenuation).';
-                        
-                        % computing second order scattering
-%                         extra_distance = sqrt(sum((bsxfun(@minus,current_phantom.points([1:n_p-1 n_p+1:h.N_points],1:3),current_phantom.points(n_p,1:3))).^2,2));
-%                         extra_delay = extra_distance/current_phantom.sound_speed;
-%                         extra_attenuation= 10.^(-current_phantom.alpha*(extra_distance/1e-2)*(h.pulse.center_frequency/1e6)).*delta0./(4*pi*extra_distance);
-%                         for nnp=1:length(extra_distance)
-%                             h.reverb(:,:,n_w,n_f)=h.reverb(:,:,n_w,n_f)+bsxfun(@times,interp1(time_1w,transmit_signal,delayed_time-extra_delay(nnp),'linear',0),attenuation.*extra_attenuation(nnp)).';
-%                         end
-                    end                   
+                % computing the receive signal
+                delayed_time = time_2w - propagation_delay;
+                if wave_delays
+                    delayed_time = delayed_time + h.sequence(n_wave).delay-time_2w(1);
                 end
+                
+                for n_point = 1:h.phantom.N_points
+                    F.Values = transmit_signal(:,1,n_point);
+                    tmp(:,:,n_point) = F(delayed_time(:,:,n_point));
+                end
+                out_dataset.data(:,:,n_wave) = sum(tmp.*attenuation, 3, 'omitnan');
+                
+                % computing second order scattering
+                %                         extra_distance = sqrt(sum((bsxfun(@minus,current_phantom.points([1:n_p-1 n_p+1:h.N_points],1:3),current_phantom.points(n_p,1:3))).^2,2));
+                %                         extra_delay = extra_distance/current_phantom.sound_speed;
+                %                         extra_attenuation= 10.^(-current_phantom.alpha*(extra_distance/1e-2)*(h.pulse.center_frequency/1e6)).*delta0./(4*pi*extra_distance);
+                %                         for nnp=1:length(extra_distance)
+                %                             h.reverb(:,:,n_w,n_f)=h.reverb(:,:,n_w,n_f)+bsxfun(@times,interp1(time_1w,transmit_signal,delayed_time-extra_delay(nnp),'linear',0),attenuation.*extra_attenuation(nnp)).';
+                %                         end
             end
-            tools.workbar(1);
         end
     end
     
     %% set methods
     methods  
-        function h=set.phantom(h,in_phantom)
+        function set.phantom(h,in_phantom)
             assert(isa(in_phantom,'uff.phantom'), 'The phantom is not a PHANTOM class. Check HELP PHANTOM.');
             h.phantom=in_phantom;
         end
-        function h=set.pulse(h,in_pulse)
+        function set.pulse(h,in_pulse)
             assert(isa(in_pulse,'uff.pulse'), 'The pulse is not a PULSE class. Check HELP PULSE.');
             h.pulse=in_pulse;
         end
-        function h=set.probe(h,in_probe)
+        function set.probe(h,in_probe)
             assert(isa(in_probe,'uff.probe'), 'The probe is not a PROBE class. Check HELP PROBE.');
             h.probe=in_probe;
         end
-        function h=set.sequence(h,in_sequence)
+        function set.sequence(h,in_sequence)
             assert(isa(in_sequence,'uff.wave'), 'The sequence members are not a WAVE class. Check HELP WAVE.');
             h.sequence=in_sequence;
         end
-        function h=set.sampling_frequency(h,in_sampling_frequency)
-            assert(numel(in_sampling_frequency)==1, 'The sampling frequency must be a escalar');
+        function set.sampling_frequency(h,in_sampling_frequency)
+            assert(numel(in_sampling_frequency)==1, 'The sampling frequency must be a scalar');
             h.sampling_frequency=in_sampling_frequency;
         end       
-        function h=set.PRF(h,in_PRF)
-            assert(numel(in_PRF)==1, 'The PRF must be a escalar');
+        function set.PRF(h,in_PRF)
+            assert(numel(in_PRF)==1, 'The PRF must be a scalar');
             h.PRF=in_PRF;
         end       
     end
