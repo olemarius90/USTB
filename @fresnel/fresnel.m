@@ -131,24 +131,24 @@ classdef fresnel < handle
             F.GridVectors = {time_1w};
 
             % the wave loop
-            tmp = zeros([N_samples,h.N_elements,h.phantom.N_points]);
+            receive_signal = zeros([N_samples,h.N_elements,h.phantom.N_points]);
             for n_wave=1:h.N_waves
                 
                 % computing the transmit signal
-                delayed_time = time_1w - (propagation_delay + h.sequence(n_wave).delay_values.');
-                transmit_signal = sum(h.pulse.signal(delayed_time).*apodization(:,:,n_wave).*attenuation, 2);
+                transmit_delay = time_1w - (propagation_delay + h.sequence(n_wave).delay_values.');
+                transmit_signal = sum(h.pulse.signal(transmit_delay).*apodization(:,:,n_wave).*attenuation, 2);
                 
                 % computing the receive signal
-                delayed_time = time_2w - propagation_delay;
+                receive_delay = time_2w - propagation_delay;
                 if wave_delays
-                    delayed_time = delayed_time + h.sequence(n_wave).delay-time_2w(1);
+                    receive_delay = receive_delay + h.sequence(n_wave).delay-time_2w(1);
                 end
                 
                 for n_point = 1:h.phantom.N_points
                     F.Values = transmit_signal(:,1,n_point);
-                    tmp(:,:,n_point) = F(delayed_time(:,:,n_point));
+                    receive_signal(:,:,n_point) = F(receive_delay(:,:,n_point));
                 end
-                out_dataset.data(:,:,n_wave) = sum(tmp.*attenuation, 3, 'omitnan');
+                out_dataset.data(:,:,n_wave) = sum(receive_signal.*attenuation, 3, 'omitnan');
                 
                 % computing second order scattering
                 %                         extra_distance = sqrt(sum((bsxfun(@minus,current_phantom.points([1:n_p-1 n_p+1:h.N_points],1:3),current_phantom.points(n_p,1:3))).^2,2));
