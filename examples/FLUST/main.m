@@ -33,7 +33,7 @@ clear all;
 close all;
 
 addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
-addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_flust_git');
+addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
 addpath('Phantoms')
 addpath('PSF_acquisition')
 
@@ -78,7 +78,7 @@ s.PSF_params.run.chunkSize = 100;
 %% DEFINE PHANTOM AND PSF FUNCTIONS
 s.phantom_function = @Phantom_small2Dtube;
 s.phantom_params = []; % this structure may contain phantom parameters
-
+s.phantom_params.btf = 0;
 % make phantom
 flowField = s.phantom_function(s.phantom_params); % flowField should have timetab and postab fields
 
