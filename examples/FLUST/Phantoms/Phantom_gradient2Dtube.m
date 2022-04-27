@@ -1,12 +1,12 @@
-function [flowField, GT, p] = Phantom_gradient2Dtube( setup, X, Z ) 
+function [flowField, p, GT] = Phantom_gradient2Dtube( setup, X, Z ) 
 
-%% small 2D tube phantom, run and check signal integrity in the middle of the tube
+%% small 2D tube phantom with velocity gradient. Set vel_1 and vel_2 equal for plug flow.
 p.btf = 60;
 p.npoints = 10;
 p.flowlength = 0.0024; %0.005; %0.03; %0.005;
 p.tubedepth = 0.015; %0.03;
-p.depthstep = 0.0001; %0.00015; %lambda/2 for 5 MHz
-p.noFlowLines = 3;
+p.maxLineSpacing = 0.0001; %0.00015; %lambda/2 for 5 MHz
+p.diameter = 0.001;
 p.vel_1 = 0.4;
 p.vel_2 = 2;
 
@@ -19,11 +19,11 @@ for k=1:size(fields,1)
     end
 end
 
+noFlowLines = ceil(p.diameter/p.maxLineSpacing)+1;
+veltab = linspace( p.vel_1, p.vel_2, noFlowLines);
 
-veltab = linspace( p.vel_1, p.vel_2, p.noFlowLines);
-
-depthtab = linspace( p.tubedepth-p.depthstep*(p.noFlowLines-1)/2, p.tubedepth+p.depthstep*(p.noFlowLines-1)/2, p.noFlowLines);
-for kk = 1:p.noFlowLines
+depthtab = linspace( p.tubedepth-p.maxLineSpacing*(noFlowLines-1)/2, p.tubedepth+p.maxLineSpacing*(noFlowLines-1)/2, noFlowLines);
+for kk = 1:noFlowLines
     time_max = p.flowlength/veltab(kk);
     currtubedepth = depthtab(kk);
     flowField(kk).timetab = linspace(0, time_max, p.npoints);
