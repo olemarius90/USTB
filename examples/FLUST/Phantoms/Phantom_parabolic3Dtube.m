@@ -39,8 +39,8 @@ origPos = [zeros( size( D(:) ) ).'; E(:).'; D(:).'];
 rAZ = [cosd(90-p.btfAZ) 0 sind(90-p.btfAZ); 0 1 0; -sind(90-p.btfAZ) 0 cosd(90-p.btfAZ)];
 rEL = [1 0 0; 0 cosd(p.btfEL) -sind(p.btfEL); 0 sind(p.btfEL) cosd(p.btfEL)];
 rotPos = rEL*rAZ*origPos;
-rotD = rotPos(2,:)+p.tubedepth;
-rotE = rotPos(3,:);
+rotD = rotPos(3,:)+p.tubedepth;
+rotE = rotPos(2,:);
 
 % GTdepth = depthtab-p.tubedepth;
 % GTveltab = (1-(GTdepth/radius).^2)*p.vel_high+p.vel_low;
