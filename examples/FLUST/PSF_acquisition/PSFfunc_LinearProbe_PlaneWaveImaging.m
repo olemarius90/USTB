@@ -92,6 +92,8 @@ noSubAz=round(probe.element_width/(p.trans.lambda/8));        % number of subele
 noSubEl=round(probe.element_height/(p.trans.lambda/8));       % number of subelements in the elevation direction
 Th = xdc_focused_array (probe.N, probe.element_width, probe.element_height, p.trans.kerf, p.trans.lens_el, noSubAz, noSubEl, [0 0 Inf]); 
 Rh = xdc_focused_array (probe.N, probe.element_width, probe.element_height, p.trans.kerf, p.trans.lens_el, noSubAz, noSubEl, [0 0 Inf]); 
+% Th = xdc_linear_array (probe.N, probe.element_width, probe.element_height, p.trans.kerf, noSubAz, noSubEl, [0 0 Inf]); 
+% Rh = xdc_linear_array (probe.N, probe.element_width, probe.element_height, p.trans.kerf, noSubAz, noSubEl, [0 0 Inf]); 
 
 % We also set the excitation, impulse response and baffle as below:
 xdc_excitation (Th, excitation);
@@ -101,7 +103,17 @@ xdc_center_focus(Th,[0 0 0]);
 xdc_impulse (Rh, impulse_response);
 xdc_baffle(Rh, 0);
 xdc_center_focus(Rh,[0 0 0]);
- 
+
+% calculate elevation lag
+elementPosEl = linspace(-probe.element_height/2, probe.element_height/2, 2*noSubEl+1);
+elementPosEl = elementPosEl(2:2:end-1);
+elFocalDelays = sqrt( elementPosEl.^2+p.trans.lens_el.^2)/c0;
+txlagEl = (min(elFocalDelays) - max(elFocalDelays)  )*2;
+
+
+
+
+
 %% Define plane wave sequence
 % Define the start_angle and number of angles
 F=size(flowLine,1);                        % number of frames
@@ -177,7 +189,7 @@ for f=1:size(point_position,1)
         seq(n).source.azimuth=alphaTx(n);
         seq(n).source.distance=Inf;
         seq(n).sound_speed=c0;
-        seq(n).delay = -lag*dt;
+        seq(n).delay = txlagEl-lag*dt;
     end
 end
 
