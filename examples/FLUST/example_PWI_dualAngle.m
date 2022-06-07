@@ -62,7 +62,7 @@ s.overSampFact = 2;    % slow time oversampling factor, should be high enough to
                        % in slow time signal. Without oversampling, slow time sampling rate = firing rate
 
 %% PERFORMANCE PARAMETER
-chunksize = 5;         % chunking on scanlines, adjust according to available memory.
+chunksize = 1;         % chunking on scanlines, adjust according to available memory.
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
@@ -81,8 +81,8 @@ s.PSF_params.scan.rx_apod = 'tukey25';
 s.PSF_params.scan.xStart = -5e-3;
 s.PSF_params.scan.xEnd = 5e-3;
 s.PSF_params.scan.Nx = 256;
-s.PSF_params.scan.zStart = 5e-3;
-s.PSF_params.scan.zEnd = 25e-3;
+s.PSF_params.scan.zStart = 10e-3;
+s.PSF_params.scan.zEnd = 30e-3;
 s.PSF_params.scan.Nz = 256;
 
 % Runtime params
@@ -90,18 +90,22 @@ s.PSF_params.run.chunkSize = 100; % Description?
 
 %% DEFINE PHANTOM AND PSF FUNCTIONS
 %s.phantom_function = @Phantom_parabolic3Dtube;
-s.phantom_function = @Phantom_parabolic2Dtube;
-% s.phantom_function = @Phantom_gradient2Dtube;
+% s.phantom_function = @Phantom_parabolic2Dtube;
+s.phantom_function = @Phantom_gradient2Dtube;
 
 
 % Phantom parameters. Print s.phantom_params after running simulation to see which parameters can be set.
 s.phantom_params = []; 
-s.phantom_params.btfAZ = 75;
-s.phantom_params.diameter = 0.001; % Number of flowlines = ceil(diameter/maxLineSpacing)+1
-s.phantom_params.tubedepth = 0.018;
+% s.phantom_params.btfAZ = 90;
+s.phantom_params.btf = 90;
+s.phantom_params.flowlength = 0.006;
+s.phantom_params.diameter = 0.006; % Number of flowlines = ceil(diameter/maxLineSpacing)+1
+s.phantom_params.tubedepth = 0.020;
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
-s.phantom_params.vel_low = 0.001;
-s.phantom_params.vel_high = 0.5;
+% s.phantom_params.vel_low = 0.001;
+% s.phantom_params.vel_high = 0.5;
+s.phantom_params.vel_1 = 0.001;
+s.phantom_params.vel_2 = 0.5;
 
 % To output true velocities in phantom, define grid
 myX = linspace(s.PSF_params.scan.xStart,s.PSF_params.scan.xEnd,s.PSF_params.scan.Nx);
@@ -127,25 +131,127 @@ title('Flowlines, rF(t)')
 set(gca,'zdir','reverse')
 view(3)
 
-GTT = reshape(GT, [s.PSF_params.scan.Nx, s.PSF_params.scan.Nz, 3]);
-figure,subplot(1,4,1), imagesc(X(:),Z(:),GTT(:,:,1)), title('Vx'), colorbar
-hold on, subplot(1,4,2), imagesc(X(:),Z(:), GTT(:,:,2)), title('Vy'), colorbar
-subplot(1,4,3), imagesc(X(:),Z(:), GTT(:,:,3)), title('Vz'), colorbar
+% GTT = reshape(GT, [s.PSF_params.scan.Nx, s.PSF_params.scan.Nz, 3]);
+% figure,subplot(1,4,1), imagesc(X(:),Z(:),GTT(:,:,1)), title('Vx'), colorbar
+% hold on, subplot(1,4,2), imagesc(X(:),Z(:), GTT(:,:,2)), title('Vy'), colorbar
+% subplot(1,4,3), imagesc(X(:),Z(:), GTT(:,:,3)), title('Vz'), colorbar
 
-subplot(1,4,4), imagesc(X(:), Z(:), sqrt(GTT(:,:,1).^2 + GTT(:,:,2).^2 + GTT(:,:,3).^2)), title('Vmagn'), colorbar
-    
+% figure, imagesc(X(:),Z(:),GT), title('Vmagn'), colorbar
+figure, hold on, pcolor(X*1000,Z*1000,GT), shading interp, title('Vmagn (m/s)'), colorbar
+set(gca,'ydir','reverse'), axis image
+xlabel('X (mm)'), ylabel('Z (mm)')  
     
 
 %% FLUST main loop
+tic
 runFLUST;
+disp('Running time FLUST')
+toc
+
+% Elapsed time is 2454.964098 seconds.
+
+%% Save realizations
+dir = 'I:\WORKDIR\Anne\!BloodFlowData\DataTrondheim\FLUST simulations\20220607_Artimino\';
+filename = 'PWI_dualAngle_gradient2Dtube.mat';
+
+save([dir, filename])
+
 
 %% VISUALIZE FIRST REALIZATION using the built-in beamformed data object
-firstRealization = realTab(:,:,:,1,1);
 
-b_data = uff.beamformed_data();
-b_data.scan = PSFstruct.scan;
-b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
-b_data.plot([],['Flow from FLUST'],[20])
+% AS: not possble yet to show data on linear_scan_rotated using ustb yet
+% --> USTB: beamformed_data.m has to be adapted
+
+% firstRealization = realTab(:,:,:,1,1);
+% 
+% b_data = uff.beamformed_data();
+% b_data.scan = PSFstruct.scan;
+% b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
+% b_data.plot([],['Flow from FLUST'],[20])
+
+%% AS - temp, own visualization of realizations
+
+dynamic_range = 60;
+ensNr = 1;
+
+% Movie object
+filenameMovie       = [dir, 'realizationsGradFlow.avi'];
+writerObj           = VideoWriter(filenameMovie,'Motion JPEG AVI');
+writerObj.FrameRate = 5;
+writerObj.Quality   = 80;
+open(writerObj);
+
+% axis info
+xc = p.scan.xStart+((p.scan.xEnd-p.scan.xStart)/2);% Center of rotation
+zc = p.scan.zStart + ((p.scan.zEnd-p.scan.zStart)/2);
+if ~exist('sca','var')
+    nA = size(realTab,4);
+    sca = cell(1,nA);
+    for a = 1:nA
+        sca{a} = uff.linear_scan_rotated('x_axis',linspace(p.scan.xStart,p.scan.xEnd,p.scan.Nx).', 'z_axis', linspace(p.scan.zStart,p.scan.zEnd,p.scan.Nz).', 'rotation_angle', p.acq.alphaTx(a) ,'center_of_rotation',[xc,0,zc]');
+    end
+end
+x1 = reshape(sca{1}.x,[sca{1}.N_x_axis, sca{1}.N_z_axis])*1000;
+z1 = reshape(sca{1}.z,[sca{1}.N_x_axis, sca{1}.N_z_axis])*1000;
+x2 = reshape(sca{2}.x,[sca{2}.N_x_axis, sca{2}.N_z_axis])*1000;
+z2 = reshape(sca{2}.z,[sca{2}.N_x_axis, sca{2}.N_z_axis])*1000;
+
+% data
+firstReal = realTab(:,:,:,:,ensNr);
+envelope = abs(firstReal);
+envelope = 20*log10(envelope./max(envelope(:)));
+max_value = 0;
+min_value = -dynamic_range;
+
+% figure
+[ fig(1), ah1 ]  = multipleAxes( 700, 1100, 1, 2, 0,45,'on',[1 1 1], [1 1 1] );
+
+for fr = 1:40
+    
+    % angle 1
+    a = 1;
+    axes(ah1(1))
+    pcolor(x1, z1, envelope(:,:,fr, a)), shading interp
+    set(gca,'ydir','reverse')
+    xlabel('X (mm)')
+    ylabel('Z (mm)')
+    axis image
+    title(['PW-20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
+    colormap gray
+    caxis(gca,[min_value max_value]);
+    brighten(-0.5)
+    colorbar
+    
+    % phantom geom
+    hold on, plot([-8 8],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
+    hold on, plot([-8 8],[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
+%     % phantom velocities
+%     hold on, plot([0 0],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--y')
+%     hold on, plot([0 2],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'-y', 'lineWidth',2)
+    
+    % angle 2
+    axes(ah1(2))
+    a = 2;
+    pcolor(x2, z2, envelope(:,:,fr, a)), shading interp
+    set(gca,'ydir','reverse')
+    xlabel('X (mm)')
+    ylabel('Z (mm)')
+    axis image
+    title(['PW+20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
+    colormap gray
+    caxis(gca,[min_value max_value]);
+    brighten(-0.5)
+    colorbar
+    
+    % phantom params
+    hold on, plot([-8 8],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
+    hold on, plot([-8 8],[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
+    
+    writeVideo(writerObj,getframe(fig(1)))
+    
+end
+
+close(writerObj)
 
 %% True velocities?
 
@@ -154,4 +260,49 @@ figure(); imagesc(X(:), Z(:), GT); title('Vmag') % Example, looking at velocity 
 
 %GT_rsh = reshape( GT, [s.PSF_params.scan.Nz s.PSF_params.scan.Nx 3] );
 %figure(); imagesc(X(:), Z(:), GT_rsh(:,:,1)); title('Vx') % Example, looking at x component of velocity field
+
+
+%% IQ --> RF
+
+% [rfData,fs] = iq2rf(IQdata,fs,fc,depthIncrement,c,startDepth)
+% IQdata = [numSamples, numLines]
+
+% constants
+c0              = 1540;
+depthIncrement  = sca{1}.z_step;    % sample distance IQ data (m)       
+startDepth      = sca{1}.z_axis(1); %0;                % depth of first sample (m)
+
+% pre-allocate
+rfData_t = zeros(size(realTab,1)*4, size(realTab,2), size(realTab,3), size(realTab,4), size(realTab,5));
+
+% looping over frames
+for ensNr = 1:size(realTab,5)
+    for aNr = 1:size(realTab,4)
+        for frNr = 1:size(realTab,3)
+
+            % single frame IQdata
+            IQData  = realTab(:,:,frNr,aNr,ensNr); 
+            [rf,fs] = iq2rf(IQData, p.trans.f0*4, p.trans.f0, depthIncrement, c0, startDepth);
+            
+            rfData(:,:,frNr, aNr, ensNr) = rf;
+        end
+    end
+end
+
+%% check RF signals
+figure, imagesc(abs(hilbert(rfData(:,:,1,2,1)))), title('RF data')
+figure, imagesc(abs(realTab(:,:,1,2,1))), title('abs(IQ) data')
+
+% spectrum analysis
+n           = size(rfData(:,:,1,2,1),1);
+f0          = (-n/2:n/2-1)*(fs/n);
+DFT         = fft(rfData(:,:,1,2,1));
+DFT0        = fftshift(DFT);
+DFT0_power  = abs(DFT0.^2)/n;
+figure, plot(f0, DFT0_power), xlabel('Frequency'), ylabel('Power [dB]'), xlim([-fs/2 fs/2]), title('spectrum sampled at 4*fc after IQ forward and back')
+
+%% save RF signals
+filename = 'PWI_dualAngle_gradient2Dtube_RF.mat';
+
+save([dir, filename], 'rfData')
 

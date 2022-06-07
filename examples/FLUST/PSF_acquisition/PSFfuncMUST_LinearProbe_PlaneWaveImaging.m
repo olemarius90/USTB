@@ -1,4 +1,4 @@
-function [PSFs,p] = PSFfuncM_LinearProbe_PlaneWaveImaging(flowLine, setup) % parameter structure not used in this example
+function [PSFs,p] = PSFfuncMUST_LinearProbe_PlaneWaveImaging(flowLine, setup) % parameter structure not used in this example
 
 addpath('C:\Users\jorgenav\Documents\MATLAB\Software\MUST');
 
