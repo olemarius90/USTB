@@ -26,7 +26,7 @@ for kk = 1:length(flowField)
     PSFs = reshape( PSFstruct.data, [szZ, szX, noAngs, length( newtimetab)] );
     
     %% AS, temp - Visually check PSFs for both angles
-    if 1
+    if 0
         % Create beamform grids (again)
         % Center of rotation
         xc = p.scan.xStart+((p.scan.xEnd-p.scan.xStart)/2);

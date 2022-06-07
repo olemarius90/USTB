@@ -245,7 +245,7 @@ for a = 1:length(alphaTx)
 end
 
 % visualize rotated grids
-if 1
+if 0
     figure, plot(sca{1}.x*1000, sca{1}.z*1000,'.b'),
     hold on, plot(sca{2}.x*1000, sca{2}.z*1000,'.g'), axis image
     c = axis; xlabel('X (mm)'), ylabel('Z (mm)'), set(gca,'ydir','reverse'), title('Rotated linear scan')
