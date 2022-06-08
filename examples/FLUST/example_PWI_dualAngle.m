@@ -50,7 +50,7 @@ s = struct();
 
 %% DATA OUTPUT PARAMETERS
 s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
-s.nrReps = 10;         % nr of realizations 
+s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
 
 contrastMode = 0;      % is set to 1, will simulate contrast scatterers propagating in flow field
@@ -73,9 +73,9 @@ s.PSF_params = [];
 % Transducer params - resembling L11-3
 s.PSF_params.trans.f0 = 7.8e6;
 s.PSF_params.trans.pulse_duration = 1.5;
-s.PSF_params.trans.pitch = 135e-3;
-s.PSF_params.trans.kerf = 13.5e-3;
-s.PSF_params.trans.element_height = 6e-3;
+s.PSF_params.trans.pitch = 135e-6;
+s.PSF_params.trans.kerf = 13.5e-6;
+s.PSF_params.trans.element_height = 5e-3;
 
 
 % Acquisition params
@@ -103,13 +103,13 @@ s.phantom_function = @Phantom_gradient2Dtube;
 s.phantom_params = []; 
 % s.phantom_params.btfAZ = 90;
 s.phantom_params.btf = 90;
-s.phantom_params.flowlength = 0.006;
+s.phantom_params.flowlength = 0.012;
 s.phantom_params.diameter = 0.006; % Number of flowlines = ceil(diameter/maxLineSpacing)+1
-s.phantom_params.tubedepth = 0.020;
+s.phantom_params.tubedepth = 0.02;
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
 % s.phantom_params.vel_low = 0.001;
 % s.phantom_params.vel_high = 0.5;
-s.phantom_params.vel_1 = 0.001;
+s.phantom_params.vel_1 = 0.02;
 s.phantom_params.vel_2 = 0.5;
 
 % To output true velocities in phantom, define grid

@@ -159,8 +159,9 @@ point_amplitudes = ones(size(point_position,1),1);
 %% output data
 point_zdists = abs( point_position(:,3) );  % depth position
 point_dists = sqrt( sum( point_position.^2, 2) );  % distance between point and center TD (0,0,0)
-cropstart=floor(1.7*min(point_zdists(:))/c0/dt);    %minimum time sample, samples before this will be dumped
-cropend=ceil(1.2*2*max(point_dists)/c0/dt);    % maximum time sample, samples after this will be dumped
+% cropstart=floor(1.7*min(point_zdists(:))/c0/dt);    %minimum time sample, samples before this will be dumped
+cropstart=floor(1*min(point_zdists(:))/c0/dt);    %minimum time sample, samples before this will be dumped
+cropend=ceil(1.5*2*max(point_dists)/c0/dt);    % maximum time sample, samples after this will be dumped
 CPW=zeros(cropend-cropstart+1,probe.N,nA,p.run.chunkSize);  % impulse response channel data
  
 %% Compute CPW signals
@@ -177,6 +178,8 @@ for f=1:size(point_position,1)
         % receive aperture
         xdc_apodization(Rh, 0, ones(1,probe.N));
         xdc_focus_times(Rh, 0, zeros(1,probe.N));
+        
+        xdc_show(Th, 'elements')
 
         % do calculation
         [v,t]=calc_scat_multi(Th, Rh, point_position(f,:), point_amplitudes(f));
