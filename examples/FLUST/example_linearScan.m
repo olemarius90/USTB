@@ -125,10 +125,7 @@ b_data.plot([],['Flow from FLUST'],[20])
 
 %% True velocities?
 
-%figure(); imagesc(X(:), Z(:), GT); title('Vmag') % Example, looking at velocity magnitude (NB, change to x and z component)
-
-
-GT_rsh = reshape( GT, [s.PSF_params.scan.Nz s.PSF_params.scan.Nx 1 3] );
-figure(2); imagesc(X(:), Z(:), GT_rsh(:,:,1,1)); axis equal; title('Vx') % Example, looking at x component of velocity field
-figure(3); imagesc(X(:), Z(:), GT_rsh(:,:,1,3)); axis equal; title('Vz') % Example, looking at x component of velocity field
+GT_rsh = reshape( GT, [PSFstruct.scan.N_z_axis PSFstruct.scan.N_x_axis 1 3] );
+figure(2); imagesc(PSFstruct.scan.x_axis(:), PSFstruct.scan.z_axis(:), GT_rsh(:,:,1,1)); axis equal; title('Vx') % Example, looking at x component of velocity field
+figure(3); imagesc(PSFstruct.scan.x_axis(:), PSFstruct.scan.z_axis(:), GT_rsh(:,:,1,3)); axis equal; title('Vz') % Example, looking at z component of velocity field
 
