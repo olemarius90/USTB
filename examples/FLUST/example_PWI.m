@@ -21,36 +21,40 @@
 
 % How to use FLUST:
 % 1) Provide/select function to calculate PSFs from a vector of spatial positions. 
-% 2) Run simulations with simple phantoms, check integrity of signal,
-%    update quality parameters if necessary, repeat.
-% 3) Run FLUST on phantom of interest.
-% 4) Apply your favorite velocity estimator to realizations. 
-% 5) Assess statistical properties of estimator, optimize estimator.
-% 6) Publish results, report statistical properties, make results
+% 2) Run FLUST on phantom of interest.
+% 3) Apply your favorite velocity estimator to realizations. 
+% 4) Assess statistical properties of estimator, optimize estimator.
+% 5) Publish results, report statistical properties, make results
 %    reproducible.
+% 6) Cite original FLUST paper
 
 clear all;
 close all;
 
-addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
-addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
+% addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
+% addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
+addpath('Core');
 addpath('Phantoms')
 addpath('PSF_acquisition')
+addpath('..\..'); % ustb main folder
+
+addpath('C:\Users\jorgenav\Documents\MATLAB\Software\field_IIpro\m_files');
+addpath('C:\Users\jorgenav\GitProjects\ustb_flust_db');
+
 
 s = struct();
 
 %% DATA OUTPUT PARAMETERS
 s.firing_rate = 12000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
-s.nrReps = 100;         % nr of realizations 
+s.nrReps = 10;         % nr of realizations 
 s.nrSamps = 50;       % nr of slow time samples in each realization (Ensemble size)
 
 contrastMode = 0;      % is set to 1, will simulate contrast scatterers propagating in flow field
 contrastDensity = 0.1; % if using contrastMode, determines the density of scatterers, typically < 0.2
 
-%% QUALITY PARAMETERS
-s.dr = 5e-5;           % spatial discretization along flowlines: lambda/4 or smaller recommended if phase information is important
-s.overSampFact = 4;    % slow time oversampling factor, should be high enough to avoid aliasing
-                       % in slow time signal. Without oversampling, slow time sampling rate = firing rate
+%% QUALITY PARAMETERS, SET ONLY ONE OF THESE
+% s.dr = 5e-5;  % spatial discretization along flowlines: lambda/4 or smaller recommended if phase information is important
+s.interpErrorLimit = 4; % FLUST will set s.dr to attain interpolation error smaller than this value in percent
 
 %% PERFORMANCE PARAMETER
 chunksize = 5;         % chunking on scanlines, adjust according to available memory.
@@ -58,45 +62,47 @@ chunksize = 5;         % chunking on scanlines, adjust according to available me
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
 s.PSF_function = @PSFfunc_LinearProbe_PlaneWaveImaging;
+% s.PSF_function = @PSFfuncMUST_LinearProbe_PlaneWaveImaging;
 
 % Tranducer and acquisition parameters. Print s.PSF_params after running simulation to see which parameters can be set.
 s.PSF_params = [];     
 % Transducer params
-s.PSF_params.trans.f0 = 6.25e6;
+s.PSF_params.trans.f0 = 7.8e6;
 s.PSF_params.trans.pulse_duration = 1.5;
-s.PSF_params.trans.pitch = 300e-6;
+s.PSF_params.trans.pitch = 200e-6;
 s.PSF_params.trans.element_height = 5e-3;
 % Acquisition params
-s.PSF_params.acq.alphaTx = [-10 10]*pi/180;
-s.PSF_params.acq.alphaRx = [0 0]*pi/180; 
-s.PSF_params.acq.F_number = 0.5;
+s.PSF_params.acq.alphaTx = [0]*pi/180;
+s.PSF_params.acq.alphaRx = [0]*pi/180; 
+s.PSF_params.acq.F_number = 0.7;
 % Image/scan region params
 s.PSF_params.scan.rx_apod = 'tukey25';
 s.PSF_params.scan.xStart = -3e-3;
 s.PSF_params.scan.xEnd = 3e-3;
-s.PSF_params.scan.Nx = 256;
-s.PSF_params.scan.zStart = 5e-3;
+s.PSF_params.scan.Nx = 128;
+s.PSF_params.scan.zStart = 15e-3;
 s.PSF_params.scan.zEnd = 25e-3;
-s.PSF_params.scan.Nz = 256;
+s.PSF_params.scan.Nz = 128;
 
 % Runtime params
 s.PSF_params.run.chunkSize = 101; % Description?
 
 %% DEFINE PHANTOM AND PSF FUNCTIONS
 %s.phantom_function = @Phantom_parabolic3Dtube;
-s.phantom_function = @Phantom_parabolic2Dtube;
-%s.phantom_function = @Phantom_gradient2Dtube;
+% s.phantom_function = @Phantom_parabolic2Dtube;
+s.phantom_function = @Phantom_gradient2Dtube;
 
 
 % Phantom parameters. Print s.phantom_params after running simulation to see which parameters can be set.
 s.phantom_params = []; 
 %s.phantom_params.btf = 60;
-s.phantom_params.btfAZ = 60;
+s.phantom_params.btfAZ = 0;
 s.phantom_params.diameter = 0.001;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
-s.phantom_params.vel_low = 0.2;
-s.phantom_params.vel_high = 1.0;
-s.phantom_params.flowlength = 0.01; 
+s.phantom_params.vel_1 = 1.0;
+s.phantom_params.vel_2 = 2.0;
+s.phantom_params.flowlength = 0.008; 
+s.phantom_params.tubedepth = 0.02; 
 
 % To output true velocities in phantom, define grid
 myX = linspace(s.PSF_params.scan.xStart,s.PSF_params.scan.xEnd,s.PSF_params.scan.Nx);
@@ -128,6 +134,6 @@ b_data.plot([],['Flow from FLUST'],[20])
 
 
 GT_rsh = reshape( GT, [s.PSF_params.scan.Nz s.PSF_params.scan.Nx 1 3] );
-figure(1); imagesc(X(:), Z(:), GT_rsh(:,:,1,1)); axis equal; title('Vx') % Example, looking at x component of velocity field
-figure(2); imagesc(X(:), Z(:), GT_rsh(:,:,1,3)); axis equal; title('Vz') % Example, looking at x component of velocity field
+figure(2); imagesc(X(:), Z(:), GT_rsh(:,:,1,1)); axis equal; title('Vx') % Example, looking at x component of velocity field
+figure(3); imagesc(X(:), Z(:), GT_rsh(:,:,1,3)); axis equal; title('Vz') % Example, looking at x component of velocity field
 
