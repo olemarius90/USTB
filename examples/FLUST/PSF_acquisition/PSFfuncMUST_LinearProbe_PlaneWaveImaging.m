@@ -1,13 +1,11 @@
 function [PSFs,p] = PSFfuncMUST_LinearProbe_PlaneWaveImaging(flowLine, setup) % parameter structure not used in this example
 
-%% Computation of a CPWI dataset with Field II and beamforming with USTB
+%% Computation of a CPWI dataset with MUST 
 %
 % Creates a simulation of Na plane waves using MUST, requires access to the
 % SIMUS simulator, which is included in the MUST library.
 %
 % date:               25.05.2022
-% based on code by :  Ole Marius Hoel Rindal <olemarius@olemarius.net>
-%                     Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
 % modified by      :  Joergen Avdal <jorgen.avdal@ntnu.no>
 %                     Ingvild Kinn Ekroll <ingvild.k.ekroll@ntnu.no>
 
@@ -102,6 +100,7 @@ zs = linspace( setup.scan.zStart, setup.scan.zEnd, setup.scan.Nz);
 [X,Z] = meshgrid(xs,zs);
 sca=uff.linear_scan('x_axis',xs.', 'z_axis', zs.');
 PSFs.scan = sca;
+PSFs.modulation_frequency = param.fc;
 
 N = length(p.acq.alphaTx);
 opt.waitbar = false;
