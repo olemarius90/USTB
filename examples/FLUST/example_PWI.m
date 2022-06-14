@@ -2,7 +2,7 @@
 
 % If using FLUST for scientific publications, please cite the original paper
 % Avdal et al: Fast Flow-Line-Based Analysis of Ultrasound Spectral and
-% Vector Velocity Estimators, tUFFC, 2019.
+% Vector Velocity Estimators, tUFFC, 2019. DOI: 10.1109/TUFFC.2018.2887398
 
 % FLUST is a simulation tool based on flowlines, useful for producing many
 % realizations of the same flowfield. The motivation for making FLUST was
@@ -27,7 +27,7 @@
 % 4) Apply your favorite velocity estimator to realizations. 
 % 5) Assess statistical properties of estimator, optimize estimator.
 % 6) Publish results, report statistical properties, make results
-%    reproducible.
+%    reproducible, cite original paper DOI: 10.1109/TUFFC.2018.2887398
 
 clear all;
 close all;
@@ -40,9 +40,9 @@ addpath('PSF_acquisition')
 s = struct();
 
 %% DATA OUTPUT PARAMETERS
-s.firing_rate = 12000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
+s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
-s.nrSamps = 50;       % nr of slow time samples in each realization (Ensemble size)
+s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
 
 contrastMode = 0;      % is set to 1, will simulate contrast scatterers propagating in flow field
 contrastDensity = 0.1; % if using contrastMode, determines the density of scatterers, typically < 0.2
@@ -53,7 +53,7 @@ s.overSampFact = 4;    % slow time oversampling factor, should be high enough to
                        % in slow time signal. Without oversampling, slow time sampling rate = firing rate
 
 %% PERFORMANCE PARAMETER
-chunksize = 5;         % chunking on scanlines, adjust according to available memory.
+chunksize = 16;         % chunking on scanlines, adjust according to available memory.
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
@@ -62,25 +62,28 @@ s.PSF_function = @PSFfunc_LinearProbe_PlaneWaveImaging;
 % Tranducer and acquisition parameters. Print s.PSF_params after running simulation to see which parameters can be set.
 s.PSF_params = [];     
 % Transducer params
-s.PSF_params.trans.f0 = 6.25e6;
+s.PSF_params.trans.f0 = 7.8e6;
 s.PSF_params.trans.pulse_duration = 1.5;
-s.PSF_params.trans.pitch = 300e-6;
 s.PSF_params.trans.element_height = 5e-3;
+s.PSF_params.trans.pitch = 135e-6;
+s.PSF_params.trans.kerf = 13.5e-6;
+s.PSF_params.trans.N = 128;
+
 % Acquisition params
-s.PSF_params.acq.alphaTx = [-10 10]*pi/180;
+s.PSF_params.acq.alphaTx = [-15 15]*pi/180;
 s.PSF_params.acq.alphaRx = [0 0]*pi/180; 
 s.PSF_params.acq.F_number = 0.5;
 % Image/scan region params
 s.PSF_params.scan.rx_apod = 'tukey25';
-s.PSF_params.scan.xStart = -3e-3;
-s.PSF_params.scan.xEnd = 3e-3;
+s.PSF_params.scan.xStart = -5e-3;
+s.PSF_params.scan.xEnd = 5e-3;
 s.PSF_params.scan.Nx = 256;
-s.PSF_params.scan.zStart = 5e-3;
+s.PSF_params.scan.zStart = 15e-3;
 s.PSF_params.scan.zEnd = 25e-3;
-s.PSF_params.scan.Nz = 256;
+s.PSF_params.scan.Nz = 128;
 
 % Runtime params
-s.PSF_params.run.chunkSize = 101; % Description?
+s.PSF_params.run.chunkSize = 125; % Description?
 
 %% DEFINE PHANTOM AND PSF FUNCTIONS
 %s.phantom_function = @Phantom_parabolic3Dtube;
@@ -90,13 +93,15 @@ s.phantom_function = @Phantom_parabolic2Dtube;
 
 % Phantom parameters. Print s.phantom_params after running simulation to see which parameters can be set.
 s.phantom_params = []; 
-%s.phantom_params.btf = 60;
 s.phantom_params.btfAZ = 60;
-s.phantom_params.diameter = 0.001;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
+s.phantom_params.diameter = 0.006;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
 s.phantom_params.vel_low = 0.2;
-s.phantom_params.vel_high = 1.0;
-s.phantom_params.flowlength = 0.01; 
+s.phantom_params.vel_high = 2;
+s.phantom_params.flowlength = 0.012; 
+% s.phantom_params.vel_1 = 0.02;
+% s.phantom_params.vel_2 = 2.0;
+s.phantom_params.tubedepth = 0.02; %0.03;
 
 % To output true velocities in phantom, define grid
 myX = linspace(s.PSF_params.scan.xStart,s.PSF_params.scan.xEnd,s.PSF_params.scan.Nx);
