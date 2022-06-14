@@ -1,4 +1,5 @@
 %% FLUST main loop
+overSampFactTab = zeros( length( flowField), 1 );
 for kk = 1:length(flowField)
 
     %% resample along flowlines with density s.dr
@@ -24,43 +25,26 @@ for kk = 1:length(flowField)
         szX = length(PSFstruct.scan.x_axis); % size( PSFs, 2);
     end
     PSFs = reshape( PSFstruct.data, [szZ, szX, noAngs, length( newtimetab)] );
-    
-    %% AS, temp - Visually check PSFs for both angles
-    if 0
-        % Create beamform grids (again)
-        % Center of rotation
-        xc = p.scan.xStart+((p.scan.xEnd-p.scan.xStart)/2);
-        zc = p.scan.zStart + ((p.scan.zEnd-p.scan.zStart)/2);
-        % Create scan
-        sca = cell(1,noAngs);
-        for a = 1:noAngs
-            sca{a} = uff.linear_scan_rotated('x_axis',linspace(p.scan.xStart,p.scan.xEnd,p.scan.Nx).', 'z_axis', linspace(p.scan.zStart,p.scan.zEnd,p.scan.Nz).', 'rotation_angle', p.acq.alphaTx(a) ,'center_of_rotation',[xc,0,zc]');
-        end
-        
-        
-        for a = 1: noAngs
-            figure()
-%             subplot(1,noAngs,a)
-            pcolor(reshape(sca{a}.x*1000, [sca{a}.N_x_axis sca{a}.N_z_axis]), reshape(sca{a}.z*1000,[sca{a}.N_x_axis sca{a}.N_z_axis] ), abs(PSFs(:,:,a,30))), shading interp
-            set(gca,'ydir','reverse')
-            xlabel('X (mm)'), ylabel('Z (mm)')
-            axis image
-            title(['Single PSF, angle ', num2str(a), '/', num2str(noAngs)])
-        end
-    end
 
-    %% make realizations
- 
     
+    %% find max velocity and oversampling factor
+    timeDiffVec = diff(flowField( kk).timetab);
+    posDiffVec = sqrt( sum( diff(flowField( kk).postab, 1).^2, 2) );
+    maxVel = max( posDiffVec./timeDiffVec);
+    minFR = maxVel/s.dr;
+    currFact = ceil( minFR/s.firing_rate);
+    overSampFactTab( kk ) = currFact;
+    
+    %% make realizations    
     % Prep for regular temporal grid with interval (1/PRFfiring/overSampleFactor). 
     % Temp res should be high enough to avoid aliasing of the signal for the highest velocities
     % present, for which the overSamplingFactor is used.
     % 'Original' time-vector
     timetab = gpuArray( newtimetab );
     % New (slow) time-vector
-    ts = gpuArray( min(timetab):(1/s.firing_rate)/s.overSampFact:max(timetab) );
+    ts = gpuArray( min(timetab):(1/s.firing_rate)/currFact:max(timetab) );
 
-    Nfft = 2*length(ts)+s.nrSamps*s.overSampFact*noAngs*s.nrReps+s.overSampFact*noAngs-1;
+    Nfft = 2*length(ts)+s.nrSamps*currFact*noAngs*s.nrReps+currFact*noAngs-1;
     
     
     % phase correction makes PSF interpolation more robust and less
@@ -86,7 +70,7 @@ for kk = 1:length(flowField)
             % Create noise function n(t)
             % Each value n(t) is a real valued random variable with Gaussian distribution and represents the amplitude of
             % scatterers with a time lag t
-            fNoiseTab = randn( [length(ts)+s.nrSamps*s.overSampFact*noAngs*s.nrReps+s.overSampFact*noAngs 1], 'single');
+            fNoiseTab = randn( [length(ts)+s.nrSamps*currFact*noAngs*s.nrReps+currFact*noAngs 1], 'single');
 
             if contrastMode
                 fN_sort = sort( abs( fNoiseTab(:) ) );
@@ -136,7 +120,7 @@ for kk = 1:length(flowField)
             totsamp = length( ts);
             weight = totdist/sqrt(totsamp);
             realTab(:,cinds,:, anglectr, : ) = realTab(:,cinds,:, anglectr, : )+...
-                gather( weight*reshape( fullRealization(:,:,length(ts)+(anglectr-1)*s.overSampFact+(0:s.overSampFact*noAngs:s.nrReps*s.nrSamps*s.overSampFact*noAngs-1),:), ...
+                gather( weight*reshape( fullRealization(:,:,length(ts)+(anglectr-1)*currFact+(0:currFact*noAngs:s.nrReps*s.nrSamps*currFact*noAngs-1),:), ...
                 [szZ, length( cinds), s.nrSamps, 1, s.nrReps]) );
 
             clc
