@@ -800,7 +800,7 @@ end
 RP = 0; % RP = Radiation Pattern
 if isSIMUS
     %- For SIMUS only (we need the full spectrum of RX signals):
-    SPECT = zeros([nSampling NumberOfElements length(x)],'like',single(1i));
+    SPECT = zeros([nSampling NumberOfElements siz0(2)],'like',single(1i));
 elseif isMKMOVIE
     %- For MKMOVIE only (we need the full spectrum of the pressure field):
     SPECT = zeros([nSampling nx],'like',single(1i));
@@ -995,9 +995,17 @@ for k = 1:nSampling
                 (RPk(nx+1:end).*options.RC(:)).'*EXP_RC;                
         end
     elseif isSIMUS % Receive: for SIMUS only (spectra of the RF signals)
-        SPECT(k,:,:) = probeSPECT(k) *... % the array bandwidth is considered
-            ( (RPk.*options.RC(:)).*RPmono ).' ... % pressure received by the elements
+        if siz0(2) == 1
+           SPECT(k,:) = probeSPECT(k) *... % the array bandwidth is considered
+            (RPk.*options.RC(:)).'*RPmono ... % pressure received by the elements
             ; % *f(k)^2/fc^2; % Rayleigh scattering (OPTIONAL)
+        else
+            RPk = reshape( RPk.*options.RC(:), siz0 );
+            RPmono = reshape( RPmono, [siz0 size( RPmono,2)] );
+            SPECT(k,:,:) = probeSPECT(k) *... % the array bandwidth is considered
+                squeeze( sum( RPk.*RPmono,1) ).' ... % pressure received by the elements
+                ; % *f(k)^2/fc^2; % Rayleigh scattering (OPTIONAL)
+        end
         if any(param.RXdelay) % reception delays, if any
             SPECT(k,:,:) = SPECT(k,:,:).*exp(1i*kw*c*param.RXdelay);
         end

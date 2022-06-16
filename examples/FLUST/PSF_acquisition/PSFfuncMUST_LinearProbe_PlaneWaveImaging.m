@@ -91,8 +91,8 @@ param.c = c0;
 param.fs = p.trans.f0*4;
 param.fnumber = p.acq.F_number;
 
-scatx = flowLine(:,1);
-scatz = flowLine(:,3);
+scatx = flowLine(:,1).'; % transposing yields PSFs instead of single image
+scatz = flowLine(:,3).';
 RC = ones( size( scatx) );
 
 xs = linspace( setup.scan.xStart, setup.scan.xEnd, setup.scan.Nx);

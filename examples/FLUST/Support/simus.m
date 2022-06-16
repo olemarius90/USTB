@@ -391,7 +391,7 @@ Nf = 2*ceil(param.fc/df)+1; % number of frequency samples
 
 
 %-- Run PFIELD to calculate the RF spectra
-RFspectrum = zeros(Nf,NumberOfElements, length(x)); % will contain the RF spectra
+RFspectrum = zeros(Nf,NumberOfElements, size(x,2) ); % will contain the RF spectra
 options.FrequencyStep = df;
 %- run PFIELD in a parallel pool (NW workers)
 if options.ParPool
