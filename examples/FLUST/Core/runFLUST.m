@@ -1,9 +1,11 @@
-%% FLUST main loop
+if ~isfield( s, 'useGPU'), s.useGPU = 0; end 
+
 if isfield( s, 'interpErrorLimit')
     suggestSpacing;
 end
-
 overSampFactTab = zeros( length( flowField), 1 );
+
+%% FLUST main loop
 for kk = 1:length(flowField)
 
     %% resample along flowlines with density s.dr
@@ -29,7 +31,7 @@ for kk = 1:length(flowField)
         szX = length(PSFstruct.scan.x_axis); % size( PSFs, 2);
     end
     PSFs = reshape( PSFstruct.data, [szZ, szX, noAngs, length( newtimetab)] );
-
+    
     
     %% find max velocity and oversampling factor
     timeDiffVec = diff(flowField( kk).timetab);
@@ -39,23 +41,31 @@ for kk = 1:length(flowField)
     currFact = ceil( minFR/s.firing_rate);
     overSampFactTab( kk ) = currFact;
     
-    %% make realizations    
+    %% make realizations
     % Prep for regular temporal grid with interval (1/PRFfiring/overSampleFactor). 
     % Temp res should be high enough to avoid aliasing of the signal for the highest velocities
     % present, for which the overSamplingFactor is used.
-    % 'Original' time-vector
-    timetab = gpuArray( newtimetab );
-    % New (slow) time-vector
-    ts = gpuArray( min(timetab):(1/s.firing_rate)/currFact:max(timetab) ).';
 
-    Nfft = 2*length(ts)+s.nrSamps*currFact*noAngs*s.nrReps+currFact*noAngs-1;
     
+    if s.useGPU
+        timetab = gpuArray( newtimetab ); % 'Original' time-vector
+        ts = gpuArray( min(timetab):(1/s.firing_rate)/currFact:max(timetab) ); % New (slow) time-vector
+    else
+        timetab = newtimetab;
+        ts = min(timetab):(1/s.firing_rate)/currFact:max(timetab);
+    end
+    
+    Nfft = 2*length(ts)+s.nrSamps*currFact*noAngs*s.nrReps+currFact*noAngs-1;
     
     % phase correction makes PSF interpolation more robust and less
     % dependent on small s.dr
     if isfield(s.PSF_params, 'phaseCorr')
         demodPhaseRad = interp1( timetab, s.PSF_params.phaseCorr, ts);
-        modPhase = gpuArray(exp(1i*2*pi*s.PSF_params.phaseCorr ) );
+        if s.useGPU
+            modPhase = gpuArray( exp(1i*2*pi*s.PSF_params.phaseCorr ) );
+        else
+            modPhase = exp(1i*2*pi*s.PSF_params.phaseCorr );
+        end
         demodPhase = exp( -1i*2*pi*demodPhaseRad);
     else
         modPhase = ones(1, noAngs);
@@ -63,13 +73,13 @@ for kk = 1:length(flowField)
     end
     
     
-    
+
     for anglectr = 1:noAngs
 
         if kk == 1 && anglectr == 1
             realTab = complex( zeros( szZ, szX, s.nrSamps, noAngs, s.nrReps, 'single') ); % pre-allocate
         end
-
+    
         if anglectr == 1
             % Create noise function n(t)
             % Each value n(t) is a real valued random variable with Gaussian distribution and represents the amplitude of
@@ -83,38 +93,40 @@ for kk = 1:length(flowField)
             end
 
             fNoiseTab = fNoiseTab/sqrt( length( ts) );
-            fNoiseTab = fft( fNoiseTab, Nfft, 1 );
-
-            fNoiseTab_GPU = gpuArray( fNoiseTab);
+            
+            if s.useGPU
+                fNoiseTab = fft( fNoiseTab, Nfft, 1 );
+                fNoiseTab_GPU = gpuArray( fNoiseTab);
+            end
         end
 
-        for coffset = 1:chunksize:szX
+        for coffset = 1:s.chunksize:szX
 %             mm = 1; % not used?
             
             % chunking of scanlines/columns
-            cinds = coffset:min( coffset+chunksize-1, szX );
-
-            myData_GPU = gpuArray( PSFs(:,cinds,anglectr,:) );
+            cinds = coffset:min( coffset+s.chunksize-1, szX );
 
             % interpolate to regular grid with interval ts.
             % myData_int = hF(r,t), function hF of time and space
             % describing the received signal from an single scatterer
             % moving along F
-            permuteMyData = permute( myData_GPU, [4 1 2 3]);
-            permuteMyData = permuteMyData(:, :);            
+            permuteMyData = permute( PSFs(:,cinds,anglectr,:), [4 1 2 3]);
+            permuteMyData = permuteMyData(:, :);
 %             myData_int = interp1( timetab, permuteMyData, ts, 'linear');
-
             myData_int = interp1( timetab, permuteMyData.*modPhase(:,anglectr), ts, 'linear').*demodPhase(:,anglectr);
 
-            
             % FFT of function hF
 
             % 1) convolution between hF and a noise function n
             % 2) IFT --> result: signal from a collection of point
             % scatterers following flowline kk
-            fft_myData = fft( myData_int, Nfft, 1);
-            fullRealization = ifft( fft_myData .* fNoiseTab_GPU, [], 1);
-
+%             fft_myData = fft( myData_int, Nfft, 1);
+            if s.useGPU
+                fft_myData = fft( myData_int, Nfft, 1);
+                fullRealization = ifft( fft_myData .* fNoiseTab_GPU, [], 1);
+            else
+                fullRealization = conv2( fNoiseTab, myData_int, 'full');
+            end
             fullRealization = permute( fullRealization, [2 1]);
             fullRealization = reshape( fullRealization, [szZ, length( cinds) size( fullRealization,2) ]);
 
