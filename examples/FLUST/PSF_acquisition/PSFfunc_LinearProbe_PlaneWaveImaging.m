@@ -280,7 +280,9 @@ for aa = 1:length( alphaRx)
     pipe.receive_apodization.tilt = [alphaRx(aa) 0];
     pipe.channel_data.data = demodData(:,:,ia(aa),:);
     pipe.channel_data.sequence = seq(ia(aa));
-    b_data=pipe.go({midprocess.das()});
+    bmf = midprocess.das();
+    bmf.code = code.mexFast;
+    b_data=pipe.go({bmf});
     if aa == 1
         dsize = size( b_data.data);
         bfData = single( zeros( dsize(1), dsize(2), length( alphaRx), dsize(4) ) );

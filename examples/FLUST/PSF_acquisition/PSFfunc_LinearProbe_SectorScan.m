@@ -262,6 +262,7 @@ pipe.receive_apodization.f_number=0;
 % To achieve the goal of this example, we use delay-and-sum (implemented in 
 % the *das_mex()* process) as well as coherent compounding.
 bmf = midprocess.das();
+bmf.code = code.mexFast;
 bmf.receive_apodization = uff.apodization();
 bmf.transmit_apodization = uff.apodization();
 bmf.transmit_apodization.window = uff.window.scanline;
