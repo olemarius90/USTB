@@ -9,28 +9,16 @@ function [PSFs,p] = PSFfuncMUST_LinearProbe_PlaneWaveImaging(flowLine, setup) % 
 % modified by      :  Joergen Avdal <jorgen.avdal@ntnu.no>
 %                     Ingvild Kinn Ekroll <ingvild.k.ekroll@ntnu.no>
 
-
-%% Basic Constants
-% 
-% Our first step is to define some basic constants for our imaging scenario
-% - below, we set the speed of sound in the tissue, sampling frequency and
-% sampling step size in time.
-
-c0=1540;     % Speed of sound [m/s]
-fs=100e6;    % Sampling frequency [Hz]
-dt=1/fs;     % Sampling step [s] 
-
 %% Set default setup parameters
 
 p.trans.f0                = 5.1333e+06;      % Transducer center frequency [Hz]
-p.trans.lambda            = c0/p.trans.f0;   % Wavelength [m]
 p.trans.element_height    = 5e-3;            % Height of element [m]
 p.trans.pitch             = 0.300e-3;        % probe.pitch [m]
 p.trans.kerf              = 0.03e-03;        % gap between elements [m]
 p.trans.lens_el           = 20e-3;           % position of the elevation focus
 p.trans.N                 = 128;             % Number of elements
 p.trans.pulse_duration    = 4.5;             % pulse duration [cycles]
-p.trans.element_width     = p.trans.pitch-p.trans.kerf;  % NB! This will be set again after setup
+p.trans.c0                = 1540;            % speed of sound [m/s]
 
 p.acq.F_number = 1;
 p.acq.alphaTx = 0; %atan(1/2/p.acq.F_number);
@@ -73,7 +61,12 @@ for k=1:size(fields,1)
 end
 
 %% Dependent Parameters
-p.trans.element_width     = p.trans.pitch-p.trans.kerf;  % Width of element [m]
+
+p.trans.lambda            = p.trans.c0/p.trans.f0;   % Wavelength [m]
+p.trans.element_width     = p.trans.pitch-p.trans.kerf; 
+
+c0 = p.trans.c0; % Speed of sound [m/s]
+
 
 %% Simulation
 

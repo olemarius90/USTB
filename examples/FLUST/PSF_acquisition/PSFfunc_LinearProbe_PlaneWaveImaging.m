@@ -15,15 +15,63 @@ function [PSFs,p] = PSFfunc_LinearProbe_PlaneWaveImaging(flowLine, setup) % para
 %                     Ingvild Kinn Ekroll <ingvild.k.ekroll@ntnu.no>
 
 
-%% Basic Constants
+%% Transducer definition L11-4v, 128-element linear array transducer
 % 
-% Our first step is to define some basic constants for our imaging scenario
-% - below, we set the speed of sound in the tissue, sampling frequency and
-% sampling step size in time.
+% Our next step is to define the ultrasound transducer array we are using.
+% Default values from the L11-4v 128 element Verasonics transducer 
+p.trans.f0                = 5.1333e+06;      % Transducer center frequency [Hz]
+p.trans.element_height    = 5e-3;            % Height of element [m]
+p.trans.pitch             = 0.300e-3;        % probe.pitch [m]
+p.trans.kerf              = 0.03e-03;        % gap between elements [m]
+p.trans.lens_el           = 20e-3;           % position of the elevation focus
+p.trans.N                 = 128;             % Number of elements
+p.trans.pulse_duration    = 4.5;             % pulse duration [cycles]
+p.trans.c0                = 1540;            % speed of sound [m/s]
+p.trans.fs                = 100e6;           % Sampling frequency [Hz]
 
-c0=1540;     % Speed of sound [m/s]
-fs=100e6;    % Sampling frequency [Hz]
-dt=1/fs;     % Sampling step [s] 
+p.acq.F_number = 1.7;
+p.acq.alphaTx = 0; %atan(1/2/p.acq.F_number);
+p.acq.alphaRx = 0;
+
+p.run.chunkSize = 101;
+
+%% Update parameters
+
+fields = fieldnames(setup.trans);
+for k=1:size(fields,1)
+    if(isfield(p.trans,fields{k}))
+        p.trans.(fields{k}) = setup.trans.(fields{k});
+    else
+        disp(['Transducer setup: ' fields{k} ' is not a valid parameter...']);
+    end
+end
+
+fields = fieldnames(setup.acq);
+for k=1:size(fields,1)
+    if(isfield(p.acq,fields{k}))
+        p.acq.(fields{k}) = setup.acq.(fields{k});
+    else
+        disp(['Acquisition setup: ' fields{k} ' is not a valid parameter...']);
+    end
+end
+
+fields = fieldnames(setup.run);
+for k=1:size(fields,1)
+    if(isfield(p.run,fields{k}))
+        p.run.(fields{k}) = setup.run.(fields{k});
+    else
+        disp(['Runtime setup: ' fields{k} ' is not a valid parameter...']);
+    end
+end
+
+%% Dependent parameters
+
+p.trans.lambda            = p.trans.c0/p.trans.f0;   % Wavelength [m]
+p.trans.element_width     = p.trans.pitch-p.trans.kerf;  % Width of element [m]
+
+c0=p.trans.c0;     % Speed of sound [m/s]
+fs=p.trans.fs;     % Sampling frequency [Hz]
+dt=1/fs;           % Sampling step [s] 
  
 %% field II initialisation
 % 
@@ -36,29 +84,6 @@ set_field('c',c0);              % Speed of sound [m/s]
 set_field('fs',fs);             % Sampling frequency [Hz]
 set_field('use_rectangles',1);  % use rectangular elements
 
-%% Transducer definition L11-4v, 128-element linear array transducer
-% 
-% Our next step is to define the ultrasound transducer array we are using.
-% Default values from the L11-4v 128 element Verasonics transducer 
-p.trans.f0                = 5.1333e+06;      % Transducer center frequency [Hz]
-p.trans.element_height    = 5e-3;            % Height of element [m]
-p.trans.pitch             = 0.300e-3;        % probe.pitch [m]
-p.trans.kerf              = 0.03e-03;        % gap between elements [m]
-p.trans.lens_el           = 20e-3;           % position of the elevation focus
-p.trans.N                 = 128;             % Number of elements
-p.trans.pulse_duration    = 4.5;             % pulse duration [cycles]
-
-fields = fieldnames(setup.trans);
-for k=1:size(fields,1)
-    if(isfield(p.trans,fields{k}))
-        p.trans.(fields{k}) = setup.trans.(fields{k});
-    else
-        disp(['Transducer setup: ' fields{k} ' is not a valid parameter...']);
-    end
-end
-
-p.trans.lambda            = c0/p.trans.f0;   % Wavelength [m]
-p.trans.element_width     = p.trans.pitch-p.trans.kerf;  % Width of element [m]
 
 probe = uff.linear_array();
 probe.element_height = p.trans.element_height;
@@ -117,35 +142,11 @@ txlagEl = (min(elFocalDelays) - max(elFocalDelays)  )*2;
 %% Define plane wave sequence
 % Define the start_angle and number of angles
 F=size(flowLine,1);                        % number of frames
-p.acq.F_number = 1.7;
-p.acq.alphaTx = 0; %atan(1/2/p.acq.F_number);
-p.acq.alphaRx = 0;
-
-fields = fieldnames(setup.acq);
-for k=1:size(fields,1)
-    if(isfield(p.acq,fields{k}))
-        p.acq.(fields{k}) = setup.acq.(fields{k});
-    else
-        disp(['Acquisition setup: ' fields{k} ' is not a valid parameter...']);
-    end
-end
-
 [alphaTx, ~, ia] = unique( p.acq.alphaTx);
 alphaRx = p.acq.alphaRx;
 
 %% Define phantom
 % Define some points in a phantom for the simulation
-
-p.run.chunkSize = 101;
-fields = fieldnames(setup.run);
-for k=1:size(fields,1)
-    if(isfield(p.run,fields{k}))
-        p.run.(fields{k}) = setup.run.(fields{k});
-    else
-        disp(['Runtime setup: ' fields{k} ' is not a valid parameter...']);
-    end
-end
-
 
 for cc = 1:p.run.chunkSize:size(flowLine, 1)
     

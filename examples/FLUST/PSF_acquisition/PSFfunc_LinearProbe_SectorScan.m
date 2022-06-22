@@ -12,28 +12,6 @@ function [PSFs,p] = PSFfunc_LinearProbe_SectorScan(flowLine, setup) % parameter 
 %                             Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
 % modified by              :  Joergen Avdal <jorgen.avdal@ntnu.no>
 
-
-%% Basic Constants
-% 
-% Our first step is to define some basic constants for our imaging scenario
-% - below, we set the speed of sound in the tissue, sampling frequency and
-% sampling step size in time.
-
-c0=1540;     % Speed of sound [m/s]
-fs=100e6;    % Sampling frequency [Hz]
-dt=1/fs;     % Sampling step [s] 
- 
-%% field II initialisation
-% 
-% Next, we initialize the field II toolbox. Again, this only works if the 
-% Field II simulation program (<field-ii.dk>) is in MATLAB's path. We also
-% pass our set constants to it.
-
-field_init(0);
-set_field('c',c0);              % Speed of sound [m/s]
-set_field('fs',fs);             % Sampling frequency [Hz]
-set_field('use_rectangles',1);  % use rectangular elements
-
 %% Set default parameters
 
 p.trans.f0              = 2.5e+06;          % Transducer center frequency [Hz]
@@ -45,7 +23,9 @@ p.trans.lens_el         = 7e-2;             % position of the elevation focus
 p.trans.N               = 96;
 p.trans.pulse_duration  = 2.5;              % pulse duration [cycles]
 p.trans.focal_depth     = 7e-2;
-p.trans.lambda          = c0/p.trans.f0;    % NB! Will be set again after setup
+p.trans.c0              = 1540;            % speed of sound [m/s]
+p.trans.fs              = 100e6;           % Sampling frequency [Hz]
+
 
 p.acq.TxSpacingDeg = 0.5; %43/180*pi;
 p.acq.noTx=15;                                      % number of angles 
@@ -96,7 +76,24 @@ for k=1:size(fields,1)
 end
 
 %% Dependent parameters
-p.trans.lambda          = c0/p.trans.f0;    % Wavelength
+p.trans.lambda          = p.trans.c0/p.trans.f0;    % Wavelength
+
+c0 = p.trans.c0;     % Speed of sound [m/s]
+fs = p.trans.fs;    % Sampling frequency [Hz]
+dt = 1/fs;     % Sampling step [s] 
+ 
+%% field II initialisation
+% 
+% Next, we initialize the field II toolbox. Again, this only works if the 
+% Field II simulation program (<field-ii.dk>) is in MATLAB's path. We also
+% pass our set constants to it.
+
+field_init(0);
+set_field('c',c0);              % Speed of sound [m/s]
+set_field('fs',fs);             % Sampling frequency [Hz]
+set_field('use_rectangles',1);  % use rectangular elements
+
+
 
 %% Setup probe object
 probe = uff.linear_array();
