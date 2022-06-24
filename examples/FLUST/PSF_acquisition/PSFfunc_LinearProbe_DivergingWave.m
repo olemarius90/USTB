@@ -1,4 +1,4 @@
-function [PSFs,p] = PSFfunc_LinearProbe_SectorScan(flowLine, setup) % parameter structure not used in this example
+function [PSFs,p] = PSFfunc_LinearProbe_DivergingWave(flowLine, setup) % parameter structure not used in this example
 
 %% Computation of a CPWI dataset with Field II and beamforming with USTB
 %
@@ -21,22 +21,25 @@ p.trans.kerf            = 0.020e-3;         % gap between elements [m]
 p.trans.element_height  = 5e-3;
 p.trans.lens_el         = 7e-2;             % position of the elevation focus
 p.trans.N               = 96;
-p.trans.pulse_duration  = 2.5;              % pulse duration [cycles]
-p.trans.focal_depth     = 7e-2;
 p.trans.c0              = 1540;            % speed of sound [m/s]
 p.trans.fs              = 100e6;           % Sampling frequency [Hz]
+p.trans.pulse_duration  = 2.5;              % pulse duration [cycles]
 
+p.acq.focal_depth       = -2e-2;    % focal depth [m], should be negative
+p.acq.apex              = 0e-2;     % apex position [m], should be non-positive
 
-p.acq.TxSpacingDeg = 0.5; %43/180*pi;
-p.acq.noTx=15;                                      % number of angles 
-p.acq.noMLA = 2;
-
-p.scan.zStart = 60e-3;
-p.scan.zEnd = 80e-3;
+p.scan.rxAngleSpanDeg = 30; 
+p.scan.noRx = 30;
+p.scan.zStart = 40e-3;
+p.scan.zEnd = 60e-3;
 p.scan.Nz = 128;
 
 p.run.chunkSize = 30;
 
+if nargin == 0
+    PSFs = p;
+    return
+end
 
 %% Import setup parameters
 fields = fieldnames(setup.trans);
@@ -78,9 +81,9 @@ end
 %% Dependent parameters
 p.trans.lambda          = p.trans.c0/p.trans.f0;    % Wavelength
 
-c0 = p.trans.c0;     % Speed of sound [m/s]
+c0 = p.trans.c0;    % Speed of sound [m/s]
 fs = p.trans.fs;    % Sampling frequency [Hz]
-dt = 1/fs;     % Sampling step [s] 
+dt = 1/fs;          % Sampling step [s] 
  
 %% field II initialisation
 % 
@@ -122,18 +125,19 @@ one_way_ir = conv(impulse_response,excitation);
 two_way_ir = conv(one_way_ir,impulse_response);
 lag = length(two_way_ir)/2+1;   
 
+noSubAz=round(probe.element_width/(p.trans.lambda/8));        % number of subelements in the azimuth direction
+noSubEl=round(probe.element_height/(p.trans.lambda/8));       % number of subelements in the elevation direction
+
 % calculate elevation lag
 elementPosEl = linspace(-probe.element_height/2, probe.element_height/2, 2*noSubEl+1);
 elementPosEl = elementPosEl(2:2:end-1);
 elFocalDelays = sqrt( elementPosEl.^2+p.trans.lens_el.^2)/c0;
 txlagEl = (min(elFocalDelays) - max(elFocalDelays)  )*2;
 
+
 %% Aperture Objects
 % Next, we define the the mesh geometry with the help of Field II's
 % *xdc_focused_array* function.
-
-noSubAz=round(probe.element_width/(p.trans.lambda/8));        % number of subelements in the azimuth direction
-noSubEl=round(probe.element_height/(p.trans.lambda/8));       % number of subelements in the elevation direction
 
 Th = xdc_focused_array( probe.N, probe.element_width, probe.element_height, p.trans.kerf, p.trans.lens_el, noSubAz, noSubEl, [0 0 Inf] );
 Rh = xdc_focused_array( probe.N, probe.element_width, probe.element_height, p.trans.kerf, p.trans.lens_el, noSubAz, noSubEl, [0 0 Inf] );
@@ -153,8 +157,8 @@ unitVec = [0 1].';
 F=size(flowLine,1); % number of frames
 % alpha=linspace(-p.acq.alpha_max,p.acq.alpha_max,p.acq.noTx); % vector of angles [rad]
 
-TxSpacingRad = p.acq.TxSpacingDeg/180*pi;
-alpha = ( -(p.acq.noTx-1)/2:1:(p.acq.noTx-1)/2 )*TxSpacingRad;
+rxAngleSpan = p.scan.rxAngleSpanDeg/180*pi;
+alpha = 0; %( -(p.acq.noTx-1)/2:1:(p.acq.noTx-1)/2 )*TxSpacingRad;
 
 for cc = 1:p.run.chunkSize:size(flowLine, 1)
     
@@ -168,18 +172,18 @@ point_zdists = abs( point_position(:,3) );
 point_dists = sqrt( sum( point_position.^2, 2) );
 cropstart=floor(1.7*min(point_zdists(:))/c0/dt);    %minimum time sample, samples before this will be dumped
 cropend=ceil(1.2*2*max(point_dists)/c0/dt);    % maximum time sample, samples after this will be dumped
-CPW=zeros(cropend-cropstart+1,probe.N,p.acq.noTx,p.run.chunkSize);  % impulse response channel data
+CPW=zeros(cropend-cropstart+1,probe.N,1,p.run.chunkSize);  % impulse response channel data
  
 %% Compute CPW signals
 disp('Field II: Computing CPW dataset');
 for f=1:size( point_position,1)
-    for n=1:p.acq.noTx
+    for n=1:length( alpha)
         clc
         disp( [num2str(f+cc-1) '/' num2str(F)]);
 
         rotMat = [cos( alpha(n) ) sin( alpha(n) ); -sin( alpha(n) ) cos( alpha(n) ) ];
         rotVec = rotMat*unitVec;
-        focVec = rotVec*p.trans.focal_depth;
+        focVec = rotVec*p.acq.focal_depth;
         
         % transmit aperture
         xdc_apodization(Th,0,ones(1,probe.N));
@@ -201,7 +205,7 @@ for f=1:size( point_position,1)
         seq(n)=uff.wave();
         seq(n).probe=probe;
         seq(n).source.azimuth=alpha(n);
-        seq(n).source.distance=p.trans.focal_depth;
+        seq(n).source.distance=p.acq.focal_depth;
         seq(n).sound_speed=c0;
         seq(n).delay = txlagEl-lag*dt;
     end
@@ -229,10 +233,12 @@ channel_data.data = CPW/1e-26; %
 % which is defined with two components: the lateral range and the 
 % depth range. *scan* too has a useful *plot* method it can call.
 
-x_axis = linspace(alpha(1)-TxSpacingRad*(p.acq.noMLA-1)/2, alpha(end)+TxSpacingRad*(p.acq.noMLA-1)/2, p.acq.noMLA*p.acq.noTx);
+x_axis = linspace(alpha(1)-rxAngleSpan/2, alpha(end)+rxAngleSpan/2, p.scan.noRx);
 z_axis = linspace(p.scan.zStart,p.scan.zEnd,p.scan.Nz);
 sca=uff.sector_scan('azimuth_axis',x_axis.', 'depth_axis', z_axis.');
-
+myApex = uff.point();
+myApex.distance = p.acq.apex;
+sca.apex = myApex;
 
 %% Pipeline
 %
@@ -267,8 +273,6 @@ bmf = midprocess.das();
 bmf.code = code.mexFast;
 bmf.receive_apodization = uff.apodization();
 bmf.transmit_apodization = uff.apodization();
-bmf.transmit_apodization.window = uff.window.scanline;
-bmf.transmit_apodization.MLA = p.acq.noMLA;
 bmf.dimension = dimension.both;
 b_data=pipe.go({bmf});
 b_data.modulation_frequency = p.trans.f0; %myDemodulation.modulation_frequency;
