@@ -57,7 +57,8 @@ contrastDensity = 0.1; % if using contrastMode, determines the density of scatte
 s.interpErrorLimit = 4; % FLUST will set s.dr to attain interpolation error smaller than this value in percent
 
 %% PERFORMANCE PARAMETER
-chunksize = 5;         % chunking on scanlines, adjust according to available memory.
+s.chunksize = 5;         % chunking on scanlines, adjust according to available memory.
+s.useGPU = 1;
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
