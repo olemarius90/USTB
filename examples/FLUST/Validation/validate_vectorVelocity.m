@@ -1,11 +1,11 @@
-function showPerformance_VV(myStruct)
+function validate_vectorVelocity(assessParams)
    %% Standardized way of showing performance of velocity estimator, using the
     % true velocities from the phantom definition as reference. Function needs
     % a structure with the following fields:
     %
     % - GT: true velocities (output from s.phantom_function)
-    % - vxEst: estimated velocities in form [Nx, Nz, Nreals]
-    % - vzEst: estimated velocities in form [Nx, Nz, Nreals]
+    % - vxEst: estimated velocities in form [Nz, Nx, Nreals]
+    % - vzEst: estimated velocities in form [Nz, Nx, Nreals]
     % - X: scan grid/grid used as input to s.phantom_function
     % - Z: scan grid/grid used as input to s.phantom_function
     % - scanMask: mask indicating valid estimator pixels (optional). Useful if phantom is only partly covered by valid scan zone (due to steering etc.)
@@ -17,32 +17,29 @@ function showPerformance_VV(myStruct)
                       
     
     %% Input
-    GT = myStruct.GT;
-    vxEst = myStruct.vxEst; % [Nx, Nz, Nreals]
-    vzEst = myStruct.vzEst; % [Nx, Nz, Nreals]
-    X = myStruct.X;         % Grid used as input to phantom function (= scan grid)
-    Z = myStruct.Z;         % Grid used as input to phantom function (= scan grid)
-    SNR = myStruct.SNR;      % SNR used in simulations
+    GT = evalin( 'base', 'GT');
+    vxEst = assessParams.result.vxEst;               % [Nz, Nx, Nreals]
+    vzEst = assessParams.result.vzEst;               % [Nz, Nx, Nreals]
+
+    X = evalin( 'base', 'X');               % Grid used as input to phantom function (= scan grid)
+    Z = evalin( 'base', 'Z');               % Grid used as input to phantom function (= scan grid)
+%     s = evalin( 'base', 's');
+    
+    SNR = assessParams.SNR;      % SNR used in simulations
     
     % Fields with default values
-    if isfield(myStruct,'biasPercentage')
-        bP = myStruct.biasPercentage;
+    if isfield(assessParams,'biasPercentage')
+        bP = assessParams.biasPercentage;
     else
         bP = 10;
     end
     
-    if isfield(myStruct,'stdPercentage')
-        sP = myStruct.stdPercentage;
+    if isfield(assessParams,'stdPercentage')
+        sP = assessParams.stdPercentage;
     else
         sP = 10;
     end
   
-    if isfield(myStruct,'scanMask')
-        scanMask = myStruct.scanMask;
-    else
-        scanMask = ones(size(phantomMask));
-    end
-    
 
     %% Find bias and standard deviation in all pixels
     % True velocities
@@ -55,7 +52,13 @@ function showPerformance_VV(myStruct)
     % Mask based on true velocities from phantom
     phantomMask  = ones(size(vMagGT));
     phantomMask(isnan(vMagGT)) = NaN;
-    
+
+    if isfield(assessParams,'scanMask')
+        scanMask = assessParams.scanMask;
+    else
+        scanMask = ones(size(phantomMask));
+    end
+
     % Combine masks
     myMask = phantomMask.*scanMask;
 
@@ -159,7 +162,7 @@ function showPerformance_VV(myStruct)
     
     figure(11)
     set(gcf,'Position',[1646 859 958 373])
-    decFac = myStruct.scatterDecimationFac;
+    decFac = assessParams.scatterDecimationFac;
     
     temp = vMag.*myMask;
     tempGT = vMagGT.*myMask;

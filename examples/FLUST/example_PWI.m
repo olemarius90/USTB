@@ -30,22 +30,23 @@
 % clear all;
 close all;
 
-% addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
+addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
 % addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
 addpath('Core');
 addpath('Phantoms')
 addpath('PSF_acquisition')
+addpath('Tools');
 addpath('Support');
 addpath('..\..'); % ustb main folder
 
-addpath('C:\Users\jorgenav\Documents\MATLAB\Software\MUST');
-addpath('C:\Users\jorgenav\Documents\MATLAB\Software\field_IIpro\m_files');
+% addpath('C:\Users\jorgenav\Documents\MATLAB\Software\MUST');
+% addpath('C:\Users\jorgenav\Documents\MATLAB\Software\field_IIpro\m_files');
 
 
 s = struct();
 
 %% DATA OUTPUT PARAMETERS
-s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
+s.firing_rate = 12000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
 
@@ -92,7 +93,7 @@ s.PSF_params.scan.Nz = 128;
 s.PSF_params.run.chunkSize = 125; % Description?
 
 %% DEFINE PHANTOM AND PSF FUNCTIONS
-%s.phantom_function = @Phantom_parabolic3Dtube;
+% s.phantom_function = @Phantom_parabolic3Dtube;
 % s.phantom_function = @Phantom_parabolic2Dtube;
 s.phantom_function = @Phantom_gradient2Dtube;
 
@@ -100,13 +101,13 @@ s.phantom_function = @Phantom_gradient2Dtube;
 % Phantom parameters. Print s.phantom_params after running simulation to see which parameters can be set.
 s.phantom_params = []; 
 s.phantom_params.btfAZ = 60;
-s.phantom_params.diameter = 0.006; %0.006;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
+s.phantom_params.diameter = 0.001; %0.006;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
 % s.phantom_params.vel_low = 1;
 % s.phantom_params.vel_high = 1;
-s.phantom_params.flowlength = 0.006; 
-s.phantom_params.vel_1 = 0.5;
-s.phantom_params.vel_2 = 1;
+s.phantom_params.flowlength = 0.012; 
+s.phantom_params.vel_1 = 0.2;
+s.phantom_params.vel_2 = 0.5;
 s.phantom_params.tubedepth = 0.02; %0.03;
 
 % To output true velocities in phantom, define grid
@@ -120,7 +121,8 @@ myY = 0;
 %Y = zeros( size(X) );
 [flowField, s.phantom_params, GT] = s.phantom_function(s.phantom_params,X,Y,Z); % flowField should have timetab and postab fields
 
-
+%% show phantom
+visualizeFlowLines( flowField);
 
 %% FLUST main loop
 % runFLUST_CPU;
@@ -134,12 +136,11 @@ b_data.scan = PSFstruct.scan;
 b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
 b_data.plot([],['Flow from FLUST'],[20])
 
-%% True velocities?
-
-%figure(); imagesc(X(:), Z(:), GT); title('Vmag') % Example, looking at velocity magnitude (NB, change to x and z component)
-
-
+%% True velocities
 GT_rsh = reshape( GT, [s.PSF_params.scan.Nz s.PSF_params.scan.Nx 1 3] );
 figure(2); imagesc(X(:), Z(:), GT_rsh(:,:,1,1)); axis equal; title('Vx') % Example, looking at x component of velocity field
 figure(3); imagesc(X(:), Z(:), GT_rsh(:,:,1,3)); axis equal; title('Vz') % Example, looking at x component of velocity field
 
+%% save realizations and metadata
+tag = 'PWI_demo';
+saveBinary( tag);
