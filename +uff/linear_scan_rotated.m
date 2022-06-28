@@ -60,8 +60,10 @@ classdef linear_scan_rotated < uff.scan
             if ~isempty(X) && ~isempty(angle) && ~isempty(centerRot)
                 Xc = X - centerRot(1);
                 Zc = Z - centerRot(3);
-                rotMatrix = vrrotvec2mat([0,0,1,angle]);
-                RotGrid = [Xc(:), Zc(:), zeros(size(Xc(:)))]*rotMatrix;
+%                 rotMatrix = vrrotvec2mat([0,0,1,angle]);
+%                 RotGrid = [Xc(:), Zc(:), zeros(size(Xc(:)))]*rotMatrix;
+                rotMatrix = [cos( angle) -sin(angle); sin(angle) cos(angle)];
+                RotGrid = [Xc(:) Zc(:)]*rotMatrix;
                 X = reshape(RotGrid(:,1),size(Xc));
                 Z = reshape(RotGrid(:,2),size(Zc));
                 X = X + centerRot(1);

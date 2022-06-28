@@ -80,6 +80,7 @@ s.PSF_params.trans.element_height = 5e-3;
 
 
 % Acquisition params
+s.PSF_params.acq.F_number = 1.16; % 128 elements
 s.PSF_params.acq.alphaTx = [-20 20]*pi/180;
 s.PSF_params.acq.alphaRx = [-20 20]*pi/180; 
 % Image/scan region params
@@ -92,7 +93,7 @@ s.PSF_params.scan.zEnd = 25e-3;
 s.PSF_params.scan.Nz = 128;
 
 % Runtime params
-s.PSF_params.run.chunkSize = 100; % Description?
+s.PSF_params.run.chunkSize = 101; % Description?
 
 %% DEFINE PHANTOM AND PSF FUNCTIONS
 %s.phantom_function = @Phantom_parabolic3Dtube;
@@ -105,7 +106,7 @@ s.phantom_params = [];
 s.phantom_params.btfAZ = 90;
 % s.phantom_params.btf = 90;
 s.phantom_params.flowlength = 0.012;
-s.phantom_params.diameter = 0.006; % Number of flowlines = ceil(diameter/maxLineSpacing)+1
+s.phantom_params.diameter = 0.001; %0.006 % Number of flowlines = ceil(diameter/maxLineSpacing)+1
 s.phantom_params.tubedepth = 0.02;
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
 % s.phantom_params.vel_low = 0.001;
@@ -158,10 +159,10 @@ toc
 % Elapsed time is 2454.964098 seconds.
 
 %% Save realizations
-dir = 'I:\WORKDIR\Anne\!BloodFlowData\DataTrondheim\FLUST simulations\20220607_Artimino\';
+dir = 'SaveData';
 filename = 'PWI_dualAngle_gradient2Dtube.mat';
 
-save([dir, filename])
+% save(fullfile(dir, filename) ); % savebinary function soon available
 
 
 %% VISUALIZE FIRST REALIZATION using the built-in beamformed data object
@@ -182,7 +183,7 @@ dynamic_range = 60;
 ensNr = 1;
 
 % Movie object
-filenameMovie       = [dir, 'realizationsGradFlow.avi'];
+filenameMovie       = fullfile( dir, 'realizationsGradFlow.avi' );
 writerObj           = VideoWriter(filenameMovie,'Motion JPEG AVI');
 writerObj.FrameRate = 5;
 writerObj.Quality   = 80;
@@ -255,53 +256,54 @@ max_value = 0;
 min_value = -dynamic_range;
 
 % figure
-[ fig(1), ah1 ]  = multipleAxes( 700, 1100, 1, 2, 0,45,'on',[1 1 1], [1 1 1] );
+% [ fig(1), ah1 ]  = multipleAxes( 700, 1100, 1, 2, 0,45,'on',[1 1 1], [1 1 1] );
+fig(1) = figure(100);
+set( fig(1), 'Position', [10 10 700 1100]);
+
+ah1(1) = subplot(2,1,1); ah1(2) = subplot(2,1,2);
 
 for fr = 1:s.nrSamps
     
     % angle 1
     a = 1;
-    axes(ah1(1))
-    pcolor(x1, z1, envelope(:,:,fr, a)), shading interp
-    set(gca,'ydir','reverse')
-    xlabel('X (mm)')
-    ylabel('Z (mm)')
-    axis image
-    title(['PW-20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
-    colormap gray
-    caxis(gca,[min_value max_value]);
-    brighten(-0.5)
-    colorbar
+%     axes(ah1(1))
+%     hold(ah1(1), 'off')
+    pcolor(ah1(1), x1, z1, envelope(:,:,fr, a)), shading(ah1(1),'interp')
+    set(ah1(1),'ydir','reverse')
+    xlabel(ah1(1), 'X (mm)')
+    ylabel(ah1(1), 'Z (mm)')
+    axis(ah1(1), 'image');
+    title(ah1(1), ['PW-20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
+    colormap(ah1(1), gray);
+    caxis(ah1(1),[min_value max_value]);
+%     brighten( -0.5)
+    colorbar(ah1(1))
     
-    % borders PW
-    hold on, plot(xmin,ymin, '--b')
-    % phantom geom
-    hold on, plot([0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
-    hold on, plot([0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
-%     % phantom velocities
-%     hold on, plot([0 0],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--y')
-%     hold on, plot([0 2],[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'-y', 'lineWidth',2)
+    % borders PW and phantom geom
+%     hold(ah1(1), 'on'), plot(ah1(1), xmin,ymin, '--b')
+%     plot(ah1(1), [0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
+%     plot(ah1(1), [0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
     
     % angle 2
-    axes(ah1(2))
+%     axes(ah1(2))
     a = 2;
-    pcolor(x2, z2, envelope(:,:,fr, a)), shading interp
-    set(gca,'ydir','reverse')
-    xlabel('X (mm)')
-    ylabel('Z (mm)')
-    axis image
-    title(['PW+20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
-    colormap gray
-    caxis(gca,[min_value max_value]);
-    brighten(-0.5)
-    colorbar
+%     hold(ah1(2), 'off')
+    pcolor(ah1(2), x2, z2, envelope(:,:,fr, a)), shading(ah1(2), 'interp');
+    set(ah1(2),'ydir','reverse')
+    xlabel(ah1(2),'X (mm)')
+    ylabel(ah1(2),'Z (mm)')
+    axis(ah1(2), 'image');
+    title(ah1(2),['PW+20, ensNr: ', num2str(ensNr, '%02d'), ', frameNr: ', num2str(fr, '%02d')])
+    colormap( ah1(2), gray);
+    caxis(ah1(2),[min_value max_value]);
+%     brighten(-0.5)
+    colorbar( ah1(2) )
     
-    % borders PW
-    hold on, plot(xplus,yplus,'--g')
-    % phantom params
-    hold on, plot([0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
-    hold on, plot([0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
-    
+    % borders PW phantom params
+%     hold( ah1(2), 'on'), plot(ah1(2), xplus,yplus,'--g')
+%     plot(ah1(2), [0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth-s.phantom_params.diameter/2 s.phantom_params.tubedepth-s.phantom_params.diameter/2]*1000,'--r')
+%     plot(ah1(2), [0-s.phantom_params.flowlength/2 0+s.phantom_params.flowlength/2]*1000,[s.phantom_params.tubedepth+s.phantom_params.diameter/2 s.phantom_params.tubedepth+s.phantom_params.diameter/2]*1000,'--r')
+     
     writeVideo(writerObj,getframe(fig(1)))
     
 end

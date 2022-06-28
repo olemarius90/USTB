@@ -362,7 +362,9 @@ for aa = 1:length( alphaRx)
     pipe.receive_apodization.tilt = [alphaRx(aa) 0];
     pipe.channel_data.data = demodData(:,:,ia(aa),:);
     pipe.channel_data.sequence = seq(ia(aa));
-    b_data=pipe.go({midprocess.das()});
+    myDas = midprocess.das();
+    myDas.code = code.mexFast;
+    b_data=pipe.go({myDas});
     if aa == 1
         dsize = size( b_data.data);
         bfData = single( zeros( dsize(1), dsize(2), length( alphaRx), dsize(4) ) );
@@ -385,5 +387,9 @@ else
 end
 
 end
-
+% add phase correction for FLUST interpolation step, improves numerical stability
+p.phaseVecsTx = [sin(p.acq.alphaTx); zeros( size( p.acq.alphaTx) ); cos(p.acq.alphaTx)];
+p.phaseVecsRx = [sin(p.acq.alphaRx); zeros( size( p.acq.alphaRx) ); cos(p.acq.alphaRx)];
+refDists = flowLine*(p.phaseVecsTx+p.phaseVecsRx);
+p.phaseCorr = refDists./c0*p.trans.f0;
 end
