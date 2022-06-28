@@ -1,13 +1,10 @@
-function showPerformance_autocorr(myStruct)
-   %% Standardized way of showing performance of velocity estimator, using the
-    % true velocities from the phantom definition as reference. Function needs
-    % a structure with the following fields:
+function validate_autocorr(assessParams)
+    % Standardized way of showing performance of velocity estimator, using the
+    % true velocities from the phantom definition as reference. Function
+    % uses a structure with the following fields:
     %
-    % - GT: true velocities (output from s.phantom_function)
     % - vxEst: estimated velocities in form [Nx, Nz, Nreals]
     % - vzEst: estimated velocities in form [Nx, Nz, Nreals]
-    % - X: scan grid/grid used as input to s.phantom_function
-    % - Z: scan grid/grid used as input to s.phantom_function
     % - scanMask: mask indicating valid estimator pixels (optional). Useful if phantom is only partly covered by valid scan zone (due to steering etc.)
     % - scatterDecimationFac: Decimation factor used in scatterplots
     % - biasPercentage: percentage of (directional) max velocity used in images of bias (default 10 percent)
@@ -17,34 +14,42 @@ function showPerformance_autocorr(myStruct)
                       
     
     %% Input
-    GT = myStruct.GT;
-    vAxEst = myStruct.vAxEst;               % [Nx, Nz, Na, Nreals]
-    X = myStruct.X;                         % Grid used as input to phantom function (= scan grid)
-    Z = myStruct.Z;                         % Grid used as input to phantom function (= scan grid)
-    SNR = myStruct.SNR;                     % SNR used in simulations
-    vNyq = myStruct.vNyq;
+    GT = evalin( 'base', 'GT');
+    vAxEst = assessParams.result.vAxEst;               % [Nx, Nz, Na, Nreals]
+    X = evalin( 'base', 'X');               % Grid used as input to phantom function (= scan grid)
+    Z = evalin( 'base', 'Z');               % Grid used as input to phantom function (= scan grid)
+    s = evalin( 'base', 's');
+    
+    Na = length(s.PSF_params.acq.alphaTx);  % number of transmits
+    PRF = s.firing_rate/Na;
+    f_demod = s.PSF_params.trans.f0;
+    c = s.PSF_params.trans.c0;
+    vNyq = PRF*c/(4*f_demod);
+
+    if isfield( assessParams, 'SNR')
+        SNR = assessParams.SNR;                     % SNR used in simulations
+    else
+        SNR = NaN;
+    end
     
     % Scan dependent direction vector
-    twoWayDopVec = -(myStruct.PSF_params.phaseVecsTx+myStruct.PSF_params.phaseVecsRx)/2;
-    
-    % Number of transmits
-    Na = length(myStruct.PSF_params.acq.alphaTx);
-    
+    twoWayDopVec = -(s.PSF_params.phaseVecsTx+s.PSF_params.phaseVecsRx)/2;
+        
     % Fields with default values
-    if isfield(myStruct,'biasPercentage')
-        bP = myStruct.biasPercentage;
+    if isfield(assessParams,'biasPercentage')
+        bP = assessParams.biasPercentage;
     else
         bP = 10;
     end
     
-    if isfield(myStruct,'stdPercentage')
-        sP = myStruct.stdPercentage;
+    if isfield(assessParams,'stdPercentage')
+        sP = assessParams.stdPercentage;
     else
         sP = 10;
     end
   
-    if isfield(myStruct,'scanMask')
-        scanMask = myStruct.scanMask;
+    if isfield(assessParams,'scanMask')
+        scanMask = assessParams.scanMask;
     else
         scanMask = ones(size(X));
     end
@@ -152,7 +157,7 @@ function showPerformance_autocorr(myStruct)
 
         figure(11)
         set(gcf,'Position',[2287 431 772 764])
-        decFac = myStruct.scatterDecimationFac;
+        decFac = assessParams.scatterDecimationFac;
 
         temp = vAxEstMean.*myMask;
         tempGT = vAxGTKK.*myMask;
