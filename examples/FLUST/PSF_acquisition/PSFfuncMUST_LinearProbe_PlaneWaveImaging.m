@@ -96,10 +96,10 @@ PSFs.scan = sca;
 PSFs.modulation_frequency = param.fc;
 
 N = length(p.acq.alphaTx);
-phaseVecsTx = [sin(p.acq.alphaTx); zeros( size( p.acq.alphaTx) ); cos(p.acq.alphaTx)];
-phaseVecsRx = [sin(p.acq.alphaRx); zeros( size( p.acq.alphaRx) ); cos(p.acq.alphaRx)];
-refDistsGrid = X.*permute(2*phaseVecsRx(1,:), [1 3 2]) + ...
-    Z.*permute(2*phaseVecsRx(3,:), [1 3 2]);
+p.phaseVecsTx = [sin(p.acq.alphaTx); zeros( size( p.acq.alphaTx) ); cos(p.acq.alphaTx)];
+p.phaseVecsRx = [sin(p.acq.alphaRx); zeros( size( p.acq.alphaRx) ); cos(p.acq.alphaRx)];
+refDistsGrid = X.*permute(2*p.phaseVecsRx(1,:), [1 3 2]) + ...
+    Z.*permute(2*p.phaseVecsRx(3,:), [1 3 2]);
 
 opt.waitbar = false;
 tic
@@ -117,6 +117,7 @@ for angleind = 1:N
     PSFs.data(:,:,angleind,:) = reshape( IQb, [length(xs)*length(zs) 1 1 size( flowLine, 1) ] );
 end
 % add phase correction for FLUST interpolation step, improves numerical stability
-refDists = flowLine*(phaseVecsTx+phaseVecsRx);
+refDists = flowLine*(p.phaseVecsTx+p.phaseVecsRx);
 p.phaseCorr = refDists./c0*p.trans.f0;
+PSFs.isMUST = 1;
 toc

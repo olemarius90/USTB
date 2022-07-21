@@ -31,16 +31,11 @@
 clear all;
 close all;
 
-addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
-addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
-addpath('Core');
-addpath('Phantoms')
-addpath('PSF_acquisition')
-addpath('..\..'); % ustb main folder
-
-s = struct();
+setPathsScript;
 
 %% DATA OUTPUT PARAMETERS
+s = struct();
+
 s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
@@ -54,7 +49,7 @@ s.interpErrorLimit = 4; % FLUST will set s.dr to attain interpolation error smal
 
 %% PERFORMANCE PARAMETER
 s.chunksize = 16;         % chunking on scanlines, adjust according to available memory.
-s.useGPU = 1;
+s.useGPU = 0;
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
@@ -73,7 +68,7 @@ s.PSF_params.trans.N = 192;
 % Acquisition params
 s.PSF_params.acq.alphaTx = [-15 15]*pi/180;
 s.PSF_params.acq.alphaRx = [0 0]*pi/180; 
-s.PSF_params.acq.F_number = 0.5;
+s.PSF_params.acq.F_number = 1.0;
 % Image/scan region params
 s.PSF_params.scan.rx_apod = 'tukey25';
 s.PSF_params.scan.xStart = -5e-3;
@@ -130,7 +125,8 @@ firstRealization = realTab(:,:,:,1,1);
 b_data = uff.beamformed_data();
 b_data.scan = PSFstruct.scan;
 b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
-b_data.plot([],['Flow from FLUST'],[20])
+b_data.frame_rate = 20;
+b_data.plot([],'Flow from FLUST', 20)
 
 %% True velocities?
 

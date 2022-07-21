@@ -31,20 +31,11 @@
 clear all;
 close all;
 
-% addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
-% addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
-addpath('Core');
-addpath('Phantoms')
-addpath('PSF_acquisition')
-addpath('..\..'); % ustb main folder
-
-addpath('C:\Users\jorgenav\Documents\MATLAB\Software\field_IIpro\m_files');
-% addpath('C:\Users\jorgenav\GitProjects\ustb_flust_db');
-
-
-s = struct();
+setPathsScript;
 
 %% DATA OUTPUT PARAMETERS
+s = struct();
+
 s.firing_rate = 12000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 50;       % nr of slow time samples in each realization (Ensemble size)
@@ -58,12 +49,11 @@ s.interpErrorLimit = 4; % FLUST will set s.dr to attain interpolation error smal
 
 %% PERFORMANCE PARAMETER
 s.chunksize = 5;         % chunking on scanlines, adjust according to available memory.
-s.useGPU = 1;
+s.useGPU = 0;
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
 s.PSF_function = @PSFfunc_LinearProbe_LinearScan;
-% s.PSF_function = @PSFfuncMUST_LinearProbe_PlaneWaveImaging
 
 % Tranducer and acquisition parameters. Print s.PSF_params after running simulation to see which parameters can be set.
 s.PSF_params = [];     
@@ -117,7 +107,8 @@ firstRealization = realTab(:,:,:,1,1);
 b_data = uff.beamformed_data();
 b_data.scan = PSFstruct.scan;
 b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
-b_data.plot([],['Flow from FLUST'],[20])
+b_data.frame_rate = 20;
+b_data.plot([],'Flow from FLUST',20)
 
 %% True velocities?
 

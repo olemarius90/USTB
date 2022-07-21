@@ -1,4 +1,4 @@
-% Updated 23/06/2022, Joergen Avdal (jorgen.avdal@ntnu.no)
+% Updated 21/07/2022, Joergen Avdal (jorgen.avdal@ntnu.no)
 
 % If using FLUST for scientific publications, please cite the original paper
 % Avdal et al: Fast Flow-Line-Based Analysis of Ultrasound Spectral and
@@ -30,23 +30,11 @@
 clear all;
 close all;
 
-% addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
-% addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
-addpath('Core');
-addpath('Phantoms')
-addpath('PSF_acquisition')
-addpath('Tools')
-addpath('..\..'); % ustb main folder
-
-addpath('C:\Users\jorgenav\Documents\MATLAB\Software\MUST');
-addpath('C:\Users\jorgenav\GitProjects\ustb_flust_db\examples\FLUST\Support')
-addpath('C:\Users\jorgenav\Documents\MATLAB\Software\field_IIpro\m_files');
-addpath('C:\Users\jorgenav\GitProjects\ustb_flust_db');
-
-
-s = struct();
+setPathsScript;
 
 %% DATA OUTPUT PARAMETERS
+s = struct();
+
 s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
@@ -65,7 +53,6 @@ s.useGPU = 0;
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
 s.PSF_function = @PSFfunc_LinearProbe_PlaneWaveImaging;
-% s.PSF_function = @PSFfuncMUST_LinearProbe_PlaneWaveImaging;
 
 % Tranducer and acquisition parameters. Print s.PSF_params after running simulation to see which parameters can be set.
 s.PSF_params = [];     
@@ -80,7 +67,7 @@ s.PSF_params.trans.N = 128;
 % Acquisition params
 s.PSF_params.acq.alphaTx = [-15 15]*pi/180;
 s.PSF_params.acq.alphaRx = [0 0]*pi/180; 
-s.PSF_params.acq.F_number = 0.5;
+s.PSF_params.acq.F_number = 1.0;
 % Image/scan region params
 s.PSF_params.scan.rx_apod = 'tukey25';
 s.PSF_params.scan.xStart = -5e-3;
@@ -126,7 +113,6 @@ myY = 0;
 
 
 %% FLUST main loop
-% runFLUST_CPU;
 runFLUST;
 
 %% beamform
@@ -142,7 +128,8 @@ figure(1);
 b_data = uff.beamformed_data();
 b_data.scan = PSFstruct.scan;
 b_data.data = reshape(firstRealization,size(firstRealization,1)*size(firstRealization,2),1,1,size(firstRealization,3));
-b_data.plot([],['Flow from FLUST'],[20])
+b_data.frame_rate = 20;
+b_data.plot([],'Flow from FLUST',20)
 
 %% True velocities?
 

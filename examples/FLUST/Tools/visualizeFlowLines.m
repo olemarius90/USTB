@@ -14,4 +14,6 @@ if maxY == 0
 else
     view(3);
 end
+set( gca, 'ZDir', 'reverse');
 axis equal tight
+drawnow;

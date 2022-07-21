@@ -94,8 +94,9 @@ function validate_vectorVelocity(assessParams)
     zmax = max(tempZ(:));
     
     
-    figure(10); 
-    set(gcf,'Position',[778 712 1188 626]);
+    figure(300);
+%     set(gcf, 'units','normalized','outerposition',[0.5 0.5 0.5 0.5])
+    set(gcf,'Position',[10 10 1188 626]);
     fontSz = 12;
     
     subplot(2,3,1);imagesc(X(:)*1000,Z(:)*1000,vxMean.*myMask*100); axis equal tight; 
@@ -156,8 +157,9 @@ function validate_vectorVelocity(assessParams)
     
     % Scatterplots
     
-    figure(11)
-    set(gcf,'Position',[1646 859 958 373])
+    figure(301);
+%     set(gcf, 'units','normalized','outerposition',[0.5 0 0.5 0.5])
+    set(gcf,'Position',[10 10 958 373])
     decFac = assessParams.scatterDecimationFac;
     
     temp = vMag.*myMask;

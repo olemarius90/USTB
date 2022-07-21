@@ -101,9 +101,9 @@ function validate_autocorr(assessParams)
         zmin = min(tempZ(:));
         zmax = max(tempZ(:));
 
-
-        figure(10); 
-        set(gcf,'Position',[546 501 1420 837]);
+        figure(200);
+%         set(gcf, 'units','normalized','outerposition',[0 0.5 1 0.5])
+        set(gcf,'Position',[10 10 1420 837]);
         fontSz = 12;
 
         subplot(Na,5,1+(kk-1)*5);imagesc(X(:)*1000,Z(:)*1000,vAxGTKK.*myMask*100); axis equal tight; 
@@ -154,9 +154,9 @@ function validate_autocorr(assessParams)
 
 
         % Scatterplots
-
-        figure(11)
-        set(gcf,'Position',[2287 431 772 764])
+        figure(201);
+%         set(gcf, 'units','normalized','outerposition',[0.5 0 0.5 0.5])
+        set(gcf,'Position',[10 10 772 764])
         decFac = assessParams.scatterDecimationFac;
 
         temp = vAxEstMean.*myMask;
