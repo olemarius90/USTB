@@ -90,7 +90,7 @@ s.phantom_function = @Phantom_gradient2Dtube;
 % Phantom parameters. Print s.phantom_params after running simulation to see which parameters can be set.
 s.phantom_params = []; 
 s.phantom_params.btfAZ = 60;
-s.phantom_params.diameter = 0.001; %0.006;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
+s.phantom_params.diameter = 0.0015; %0.006;  % Number of flowlines = ceil(diameter/maxLineSpacing)+1
 s.phantom_params.maxLineSpacing = 0.0001; % NB: Needs to be sufficiently small for given application - in the order of lambda/2;
 % s.phantom_params.vel_low = 1;
 % s.phantom_params.vel_high = 1;
