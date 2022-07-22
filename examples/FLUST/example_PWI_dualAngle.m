@@ -35,11 +35,21 @@
 clear all;
 close all;
 
-setPathsScript;
+% addpath('C:\Users\ingvilek\FieldIIpro\m_files'); 
+% addpath('C:\Users\ingvilek\OneDrive - NTNU\FLUST\ustb_phantomDB\');
+% addpath('Phantoms')
+% addpath('PSF_acquisition')
 
-%% DATA OUTPUT PARAMETERS
+addpath('H:\MUSIC\software third party\FIELD_II_Pro_2020');
+% addpath('H:\MUSIC\staff\anne\_MATLAB_external\20220523_FLUST');
+addpath('Core');
+addpath('Phantoms')
+addpath('PSF_acquisition')
+addpath('..\..'); % ustb main folder
+
 s = struct();
 
+%% DATA OUTPUT PARAMETERS
 s.firing_rate = 8000; % firing rate of output signal, (Doppler PRF) = (firing rate)/(nr of firings)
 s.nrReps = 100;         % nr of realizations 
 s.nrSamps = 40;       % nr of slow time samples in each realization (Ensemble size)
@@ -53,7 +63,7 @@ s.interpErrorLimit = 4; % FLUST will set s.dr to attain interpolation error smal
 
 %% PERFORMANCE PARAMETER
 s.chunksize = 1;         % chunking on scanlines, adjust according to available memory.
-s.useGPU = 0;
+s.useGPU = 1;
 
 
 %% DEFINE ACQUSITION SETUP / PSF FUNCTIONS 
