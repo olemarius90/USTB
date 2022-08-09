@@ -60,12 +60,9 @@ try
             weight_vector_2 = (sqrt((z_matrix(idx_b,x) - z_matrix(:,x)).^2) / norm(pos_b-pos_a));
             weight_vector_2 = weight_vector_2./weight_vector_2(idx_a);
             interpolated_delay(:,x) = weight_vector_1.* tx_delay(idx_b,x) + weight_vector_2.* tx_delay(idx_a,x);
-            
-%         elseif  sum(masked_delays(z_idx_focus:end,x) == 0) & x_matrix(z_idx_focus,x) < source.x
         elseif  sum(masked_delays(z_idx_focus:end,x) == 0) && (x_matrix(z_idx_focus,x)-source.x)*dirtest < 0
             last_before_idx = x;
             mask_before(:,x) = 1;
-%         elseif  sum(masked_delays(z_idx_focus:end,x) == 0) & x_matrix(z_idx_focus,x) > source.x
         elseif  sum(masked_delays(z_idx_focus:end,x) == 0) && (x_matrix(z_idx_focus,x)-source.x)*dirtest > 0
             if isempty(first_after_idx)
                 first_after_idx = x;
