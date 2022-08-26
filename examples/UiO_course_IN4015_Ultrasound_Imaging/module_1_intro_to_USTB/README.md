@@ -18,13 +18,13 @@ The report should be uploaded to [devilry.ifi.uio.no](devilry.ifi.uio.no).
 The first exercise is simply to demonstrate that you have installed MATLAB and sucessfully set up the USTB. Run the "minimal_example.m" in this folder and add
 your name to the title of the figure of the ultrasound image. Save this figure and add it to your report.
 
-## Exercise 2 : 
+## Exercise 2 : Introduction to MATLAB
 The second exercise is an introduction to MATLAB and pointing to relevant resoureces to learn MATLAB. You need to answer each task with the given hints by running the
 code in the MATLAB_intro.m file.
 
-## Additional USTB exercise
-
-The lab assignments for module 1 consists of using existing USTB examples to set ut the tools necessary for the rest of the exercises.
+## Additional USTB exercise:
+You are going to use the USTB quite alot in this course below are a few relevant examples you can work thorugh. You can also install the simulation tools Field II and kWave that 
+is used quite a lot together with the USTB.
 
 + Get to know the UltraSound ToolBox by running and getting familiar with multiple examples 
 	+ Pure USTB examples. Run at least five of these
