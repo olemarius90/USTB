@@ -22,8 +22,8 @@ close all
 clc
 
 do_demodulation = true;
-nFrames = 1:250:1500;
-% nFrames = 250;
+% nFrames = 1:100:500;
+nFrames = 10000;
 %% Phantom
 x_sca=[zeros(1,7) -15e-3:5e-3:15e-3];
 z_sca=[5e-3:5e-3:35e-3 20e-3*ones(1,7)];
@@ -45,12 +45,12 @@ prb.element_height=5e-3;    % element height [m]
 %% Pulse
 
 pul=uff.pulse();
-pul.center_frequency=2.5e6;       % transducer frequency [MHz]
+pul.center_frequency=5e6;       % transducer frequency [MHz]
 pul.fractional_bandwidth=0.8;     % fractional bandwidth [unitless]
 
 %% Sequence generation
 
-nPlaneWaves=3;
+nPlaneWaves=1;
 angles=linspace(-10, 10, nPlaneWaves)/180*pi;
 seq=uff.wave();
 for n=1:nPlaneWaves 
@@ -68,7 +68,7 @@ sim.phantom=pha;                % phantom
 sim.pulse=pul;                  % transmitted pulse
 sim.probe=prb;                  % probe
 sim.sequence=seq;               % beam sequence
-sim.sampling_frequency=50e6;  % sampling frequency [Hz]
+sim.sampling_frequency=50e6;    % sampling frequency [Hz]
 
 channel_data=sim.go();
 
@@ -96,7 +96,11 @@ pipe.receive_apodization.f_number=1.5;
 pipe.transmit_apodization.window=uff.window.hamming;
 pipe.transmit_apodization.f_number=1.5;
 
-
+proc            = midprocess.das();
+proc.code       = code.mex();
+proc.dimension  = dimension.both;
+fprintf(1, 'Precalculating apodization\n')
+pipe.go({proc});
 
 %% Test beamforming speed 
 
@@ -107,7 +111,6 @@ if do_demodulation
 end
 
 das_mexFast_time = zeros([length(nFrames), 1]);
-% das_mex_time = zeros([length(nFrames), 1]);
 das_mex_gpu_time = zeros([length(nFrames), 1]);
 
 for n=1:length(nFrames)
@@ -118,22 +121,16 @@ for n=1:length(nFrames)
     proc            = midprocess.das();
     proc.code       = code.mex_gpu;
     proc.dimension  = dimension.both;
+    fprintf(1, 'Processing %d frames: MEX CUDA\n', nFrames(n))
     tic()
     bf_data_mex_gpu = pipe.go({proc});
     das_mex_gpu_time(n) = toc();
-    
-%     % Time USTB's MEX CPU implementation
-%     proc            = midprocess.das();
-%     proc.code       = code.mex;
-%     proc.dimension  = dimension.both;
-%     tic()
-%     bf_data_mex_cpu = pipe.go({proc});
-%     das_mex_time(n) = toc();
 
     % Time USTB's MEX FAST CPU implementation
     proc            = midprocess.das();
     proc.code       = code.mexFast;
     proc.dimension  = dimension.both;
+    fprintf(1, 'Processing %d frames: MEX C\n', nFrames(n))
     tic()
     bf_data_mexFast_cpu = pipe.go({proc});
     das_mexFast_time(n) = toc();
@@ -141,7 +138,7 @@ end
 
 %% Plot the images for visual inspection of the results
 figure('Color', 'white')
-tiledlayout(1, 2, "TileSpacing", "compact", "Padding", "compact")
+tiledlayout(1, 3, "TileSpacing", "compact", "Padding", "compact")
 hAx(1) = nexttile();
 imagesc(scan.x_axis*1e2, scan.z_axis*1e2, ...
     20*log10(abs(reshape(bf_data_mex_gpu.data(:,1), [scan.N_z_axis, scan.N_x_axis])) / ...
@@ -151,18 +148,7 @@ box on
 axis equal tight
 xlabel("x [cm]")
 ylabel("z [cm]")
-title("MEX CUDA")
-
-% hAx(2) = nexttile();
-% imagesc(scan.x_axis*1e2, scan.z_axis*1e2, ...
-%     20*log10(abs(reshape(bf_data_mex_cpu.data(:,1), [scan.N_z_axis, scan.N_x_axis])) / ...
-%     max(abs(bf_data_mex_cpu.data(:,1)))), [-60, 0])
-% grid on
-% box on
-% axis equal tight
-% xlabel("x [cm]")
-% ylabel("z [cm]")
-% title("MEX")
+title("mex CUDA")
 
 hAx(2) = nexttile();
 imagesc(scan.x_axis*1e2, scan.z_axis*1e2, ...
@@ -173,7 +159,23 @@ box on
 axis equal tight
 xlabel("x [cm]")
 ylabel("z [cm]")
-title("MEX FAST")
+title("mexFast")
+
+hAx(3) = nexttile();
+diff_data = bf_data_mex_gpu.data(:,1) - bf_data_mexFast_cpu.data(:,1);
+
+imagesc(scan.x_axis*1e2, scan.z_axis*1e2, reshape(20*log10(abs(diff_data)), ...
+    [scan.N_z_axis, scan.N_x_axis]), [-60, 0])
+
+% imagesc(scan.x_axis*1e2, scan.z_axis*1e2, reshape(angle(diff_data), ...
+%     [scan.N_z_axis, scan.N_x_axis]), [-pi, pi])
+
+grid on
+box on
+axis equal tight
+xlabel("x [cm]")
+ylabel("z [cm]")
+title("Difference image")
 
 linkaxes(hAx)
 
