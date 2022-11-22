@@ -41,13 +41,15 @@ classdef wave < uff
     
     %   authors: Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
     %            Ole Marius Hoel Rindal <olemarius@olemarius.net>
+    %            Anders E. Vrålstad <anders.e.vralstad@ntnu.no>
     %
-    %   $Last updated: 2017/10/13$
+    %   $Last updated: 2022/11/22$
     
     %% compulsory properties
     properties  (Access = public)
         wavefront = uff.wavefront.spherical % WAVEFRONT enumeration class
         source            % POINT class
+        origin = uff.point('xyz',[0,0,0]); % Default origin of the wave is in the front of the probe, which by convention is at (0,0,0).
         apodization       % APODIZATION class
     end
     
