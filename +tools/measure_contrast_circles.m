@@ -1,8 +1,11 @@
-function [CR CNR GCNR CR_LC] = measure_contrast_circles(b_data, xc_nonecho, zc_nonecho, xc_echo, zc_echo, r, plot_flag, color)
+function [CR CNR GCNR CR_LC] = measure_contrast_circles(b_data, xc_nonecho, zc_nonecho, xc_echo, zc_echo, r, plot_flag, title_text, file_tag)
 if nargin < 7
     plot_flag = 0;
 end
 
+if nargin < 8
+    title_text = 'ROIs indicated';
+end
 %% Non echo Cyst contrast
 
 xc_speckle = xc_nonecho;
@@ -19,13 +22,13 @@ idx_speckle = (points < (r)^2);
 
 
 %%
-b_data.plot([],['1=b-mode, 2=b-mode.*CF'],[],[],[],[],'m','dark')
-caxis([-60 0]);
+b_data.plot([],[title_text],[],[],[],[],'m','dark')
+caxis([-50 0]);
 axi = gca;
 viscircles(axi,[xc_nonecho,zc_nonecho],r,'EdgeColor','r');
 viscircles(axi,[xc_echo,zc_echo],r,'EdgeColor','b');
-%b_data.frame_rate = 1;
-%b_data.save_as_gif(['Figures/vrak05_skagerrak/',filesep,'alternate_das_CF_zoom_indicated.gif'])
+b_data.frame_rate = 1;
+b_data.save_as_gif(['Figures/compare_ROI_',file_tag,'.gif'])
 
 %%
 img_signal = b_data.get_image('none');
@@ -58,17 +61,18 @@ for f = 1:b_data.N_frames
 
 %% Plot probability density function
 
-    figure()
+    fi = figure()
     plot(x,pdf_i./sum(pdf_i),'r-', 'linewidth',2); hold on; grid on;
     plot(x,pdf_o./sum(pdf_o),'b-', 'linewidth',2);
     hh=area(x,min([pdf_i./sum(pdf_i); pdf_o./sum(pdf_o)]), 'LineStyle','none');
     hh.FaceColor = [0.6 0.6 0.6];
-    xlabel('||s||');
+    xlabel('dB(|s|)');
     ylabel('Probability');
-    legend('p_i','p_o','OVL');
-
+    legend('p_i','p_o','OVL','Location','best');
     set(gca,'FontSize', 14);
-
+    xlim([-150 0]);
+    saveas(fi,['Figures/',file_tag,'_',num2str(f),'.png']);
+    
     idx = find(min([pdf_i./sum(pdf_i); pdf_o./sum(pdf_o)])>0);
     xlim([-200 0])
 
@@ -91,6 +95,5 @@ for f = 1:b_data.N_frames
 %         colorbar;
 %     else
 end
-GCNR
 end
 
