@@ -121,7 +121,7 @@ classdef das < midprocess
                                         % Calculate the "plane wave" in the transmit direction
                                         if isa(h.scan,'uff.linear_scan')
                                             plane_delay = (-1).^(h.scan.z<h.channel_data.sequence(n_wave).source.z).*sqrt((h.channel_data.sequence(n_wave).source.z-h.scan.z).^2) + h.channel_data.sequence(n_wave).source.distance;
-                                        elseif isa(h.scan,'uff.sector_scan')
+                                        elseif isa(h.scan,'uff.sector_scan')||isa(h.scan,'uff.sector_scan2')
                                             plane_delay = h.scan.z*cos(h.channel_data.sequence(n_wave).source.azimuth)*cos(h.channel_data.sequence(n_wave).source.elevation)+h.scan.x*sin(h.channel_data.sequence(n_wave).source.azimuth)*cos(h.channel_data.sequence(n_wave).source.elevation)+h.scan.y*sin(h.channel_data.sequence(n_wave).source.elevation);
                                         else
                                             error('Only linear scan and sector scan in 2D is supported for the hybrid spherical transmit delay model.');
