@@ -268,7 +268,7 @@ classdef beamformed_data < uff
                     set(gca,'GridLineStyle','none');
                     box off
                     drawnow;
-                case 'uff.sector_scan2'
+                case 'uff.sector_scan_na'
                     x_matrix=reshape(h.scan.x,[h.scan(1).N_depth_axis h.scan(1).N_azimuth_axis]);
                     z_matrix=reshape(h.scan.z,[h.scan(1).N_depth_axis h.scan(1).N_azimuth_axis ]);
                     h.all_images = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis Nrx*Ntx*Nframes]);
@@ -320,7 +320,7 @@ classdef beamformed_data < uff
                     img = reshape(envelope,[h.scan.N_z_axis h.scan.N_x_axis size(h.data,3) size(h.data,4)]);
                 case 'uff.sector_scan'
                     img = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis size(h.data,3) size(h.data,4)]);
-                case 'uff.sector_scan2'
+                case 'uff.sector_scan_na'
                     img = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis size(h.data,3) size(h.data,4)]);
                 otherwise
                     error(sprintf('Dont know how to plot on a %s yet. Sorry!',class(b_data.scan)));

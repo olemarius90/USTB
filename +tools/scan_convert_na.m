@@ -1,6 +1,6 @@
-%GETSCANCONVERTEDIMAGE Converts an image from polar to carthesian coordinates.
+%GETSCANCONVERTEDIMAGE Converts an image from beamspace to carthesian coordinates.
 %
-% [scanConvertedImage, Xs, Zs] = getScanConvertedImage(inputImage, thetas, ranges, sizeX, sizeZ, interpolationMethod)
+% [scanConvertedImage, Xs, Zs] = scan_convert_na(inputImage, thetas, ranges, sizeX, sizeZ, interpolationMethod)
 %
 % inputImage   : A range x beams sized image
 % thetas       : A vector containing the beam angles (in radians)
@@ -15,7 +15,7 @@
 % Last modified:
 % 2009.09.10 - Are C. Jensen {Created the function (more of a rewrite/cleanup of Austeng's code)}
 % 2022.12.09 - Anders E. Vrålstad
-function [scanConvertedImage, Xs, Zs] = scan_convert2(inputImage, thetas, ranges,origins, sizeX, sizeZ, interpolationMethod)
+function [scanConvertedImage, Xs, Zs] = scan_convert_na(inputImage, thetas, ranges,origins, sizeX, sizeZ, interpolationMethod)
 
 % Set parameters to default values if they are not provdied
 if nargin<7
@@ -26,12 +26,15 @@ if nargin<5
   sizeZ = 512;
 end
 
+% Check sizes of input
+assert(size(thetas,1)==size(origins,1),'This scan convertion requires the size of thetas to be similar to origins.');
+
 % Get the cartesian coordinates corresponding to the beamspace pixels in inputImage
 [thetaGrid, rangeGrid] = meshgrid(thetas, ranges);
 
 [z, x] = pol2cart(thetaGrid, rangeGrid);
-z = z+origins.geometry(:,3)';
-x = x+origins.geometry(:,1)';
+z = z+origins(:,3)';
+x = x+origins(:,1)';
 
 % Find the "box" in cartesian coordinates that encapsulates all our samples
 minX = min(x(:));
