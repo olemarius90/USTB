@@ -20,7 +20,7 @@ close all
 clc
 
 do_demodulation = true;
-nFrames = 100:100:1000;
+nFrames = 100;
 
 %% Phantom
 x_sca=[zeros(1,7) -15e-3:5e-3:15e-3];

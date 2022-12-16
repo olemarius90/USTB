@@ -97,7 +97,7 @@ classdef fast_demodulation < preprocess
                 plot(-[h.modulation_frequency, h.modulation_frequency]*1e-6, ...
                     [-60, 0]+10*log10(pv), 'r--', 'LineWidth', 1)
                 hold off
-                xlim([-2*h.modulation_frequency, 2*h.modulation_frequency]*1e-6)
+                xlim([-h.input.sampling_frequency/2, h.input.sampling_frequency/2]*1e-6)
                 ylim([-60, 0])
                 grid on
                 box on
@@ -128,7 +128,7 @@ classdef fast_demodulation < preprocess
                         'DisplayName', 'Down-mixed channel data');
                     plot([0, 0]*1e-6, [-60, 0]+10*log10(pv), 'r--', 'LineWidth', 1)
                     hold off
-                    xlim([-h.downsample_frequency, h.downsample_frequency]*1e-6)
+                    xlim([-h.downsample_frequency/2, h.downsample_frequency/2]*1e-6)
                     ylim([-60, 0])
                     grid on
                     box on
