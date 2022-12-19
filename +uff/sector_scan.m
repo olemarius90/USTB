@@ -23,7 +23,7 @@ classdef sector_scan < uff.scan
     properties  (Access = public)
         azimuth_axis                % Vector containing the azimuth coordinates of the azimuth axis [rad]
         depth_axis                  % Vector containing the distance coordinates of the distance axis [m]
-        origin                      % POINT class
+        origin                      % Vector of UFF.POINT objects
     end
     
     properties  (Dependent)
