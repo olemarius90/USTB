@@ -1,9 +1,9 @@
 /*================================================
  *
- * CUDA general beamformer for USTB
+ * CUDA MEX general beamformer for USTB
  *
  * Stefano Fiorentini <stefano.fiorentini@ntnu.no>
- * Last edit 24.11.2022
+ * Last edit 19.12.2022
  *
  *================================================*/
 
@@ -40,8 +40,8 @@
 #define pi acosf(-1.0)
 #define thread_per_block 256
 
-// IQ Beamforming kernel
-__global__ void beamform_iq(const size_t N_pixels, const size_t N_channels, const size_t N_waves, const float Fs, cuFloatComplex* bf_data, const cudaTextureObject_t tex,
+// Beamforming kernel
+__global__ void beamform(const size_t N_pixels, const size_t N_channels, const size_t N_waves, const float Fs, cuFloatComplex* bf_data, const cudaTextureObject_t tex,
 	const float* tx_delay, const float* rx_delay, const float* tx_apod, const float* rx_apod, const float i0, const float wd)
 {
 	size_t pixel_idx = blockIdx.x * blockDim.x + threadIdx.x; // pixel idx
@@ -74,39 +74,6 @@ __global__ void beamform_iq(const size_t N_pixels, const size_t N_channels, cons
 		}
 	}
 }
-
-// RF Beamforming kernel
-__global__ void beamform(const size_t N_pixels, const size_t N_channels, const size_t N_waves, const float Fs, cuFloatComplex* bf_data, const cudaTextureObject_t tex,
-	const float* tx_delay, const float* rx_delay, const float* tx_apod, const float* rx_apod, const float i0)
-{
-	size_t pixel_idx = blockIdx.x * blockDim.x + threadIdx.x; // pixel idx
-	size_t pixel_stride = blockDim.x * gridDim.x;
-
-	for (size_t i = pixel_idx; i < N_pixels; i += pixel_stride)
-	{
-
-		for (size_t j = 0; j < N_waves; j++)
-		{
-			float tDelay = tx_delay[i + j * N_pixels];
-			float tApod = tx_apod[i + j * N_pixels];
-
-			for (size_t g = 0; g < N_channels; g++)
-			{
-				float delay = tDelay + rx_delay[i + g * N_pixels];
-				float apod = tApod * rx_apod[i + g * N_pixels];
-
-				float denay = delay * Fs - i0;
-
-				// For maximum bandwidth usage adiacent threads must fetch adiacent memory locations in texture --> inputSamplingRate ~= outputSamplingRate
-				cuFloatComplex pre_bf_data = tex1DLayered<cuFloatComplex>(tex, denay, g + j * N_channels);
-
-				bf_data[i].x += pre_bf_data.x * apod;
-				bf_data[i].y += pre_bf_data.y * apod;
-			}
-		}
-	}
-}
-
 
 #define cudaErrorCheck(arg) { cudaAssert((arg), __LINE__); }
 inline void cudaAssert(cudaError_t code, int line)
@@ -141,8 +108,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	float Fd = *mxGetSingles(prhs[7]);		// Modulation frequency
 	float i0 = t0 * Fs -0.5;                // Normalised initial sample
 
-	bool IQ = fabsf(Fd) > eps;				// Toggle whether channel data is in IQ or RF format
-	float wd = IQ ? 2 * pi * Fd : 0.0;		// Demodulation frequency expressed in rad/s
+	float wd = fabsf(Fd) > eps ? 2 * pi * Fd : 0.0;		// Demodulation frequency expressed in rad/s
 
 	// Allocate beamformed data matrix in RAM
 	size_t beamformed_size[4];
@@ -267,18 +233,9 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
 		{
 			// Call beamforming kernel
-			if (!IQ)
-			{
-				beamform <<< N_blocks, block_size, 0, frame_stream[n_stream] >>> (N_pixels, N_channels, N_waves, Fs, device_bf_data[n_stream], tex[n_stream], device_tx_delay,
-					device_rx_delay, device_tx_apod, device_rx_apod, i0);
-				cudaErrorCheck(cudaPeekAtLastError());
-			}
-			else
-			{
-				beamform_iq <<< N_blocks, block_size, 0, frame_stream[n_stream] >>> (N_pixels, N_channels, N_waves, Fs, device_bf_data[n_stream], tex[n_stream], device_tx_delay,
-					device_rx_delay, device_tx_apod, device_rx_apod, i0, wd);
-				cudaErrorCheck(cudaPeekAtLastError());
-			}
+			beamform <<< N_blocks, block_size, 0, frame_stream[n_stream] >>> (N_pixels, N_channels, N_waves, Fs, device_bf_data[n_stream], tex[n_stream], device_tx_delay,
+				device_rx_delay, device_tx_apod, device_rx_apod, i0, wd);
+			cudaErrorCheck(cudaPeekAtLastError());
 		}
 
 		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
