@@ -4,8 +4,9 @@ classdef sector_scan < uff.scan
     %   from an origin. If more origins are present
     %
     %   Compulsory properties:
-    %         x_axis           % Vector containing the x coordinates of the x - axis [m]
-    %         z_axis           % Vector containing the z coordinates of the z - axis [m]
+    %         azimuth_axis         % Vector containing the azimuth coordinates [rad]
+    %         depth_axis           % Vector containing the distance coordinates [m]
+    %         origin               % Vector of UFF.POINT objects
     %
     %   Example:
     %         sca = uff.linear_scan();
@@ -18,11 +19,11 @@ classdef sector_scan < uff.scan
     %   authors:    Alfonso Rodriguez-Molares (alfonso.r.molares@ntnu.no)
     %               Anders E. Vrålstad (anders.e.vralstad@ntnu.no)
     %               Stefano Fiorentini (stefano.fiorentini@ntnu.no)
-    %   $Date: 2022/12/19$
+    %   $Date: 2022/12/20$
 
     properties  (Access = public)
-        azimuth_axis                % Vector containing the azimuth coordinates of the azimuth axis [rad]
-        depth_axis                  % Vector containing the distance coordinates of the distance axis [m]
+        azimuth_axis                % Vector containing the azimuth coordinates [rad]
+        depth_axis                  % Vector containing the distance coordinates [m]
         origin                      % Vector of UFF.POINT objects
     end
     
