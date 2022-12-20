@@ -17,7 +17,7 @@
 
 clear all
 close all
-% clc
+clc
 
 do_demodulation = true;
 nFrames = 1:100:1001;
@@ -52,7 +52,7 @@ for n=1:nPlaneWaves
     seq(n)=uff.wave();
     seq(n).probe=prb;
     seq(n).source.azimuth=angles(n);
-    seq(n).source.distance=Inf;
+    seq(n).wavefront = uff.wavefront.plane;
     seq(n).sound_speed=pha.sound_speed;
 end
 
@@ -76,7 +76,7 @@ if do_demodulation
 end
 
 %% Scan
-scan = uff.linear_scan('x_axis',linspace(-2e-2,2e-2,256).', 'z_axis', linspace(0, 4e-2, 256).');
+scan = uff.linear_scan('x_axis',linspace(-2e-2,2e-2,256).', 'z_axis', linspace(0, 4e-2, 512).');
 
 %% Pipeline
 
@@ -87,7 +87,10 @@ pipe.scan=scan;
 pipe.receive_apodization.window=uff.window.hamming;
 pipe.receive_apodization.f_number=2;
 
-pipe.transmit_apodization.window=uff.window.none;
+% pipe.transmit_apodization.window=uff.window.none;
+pipe.transmit_apodization.window=uff.window.hamming;
+pipe.transmit_apodization.f_number=2;
+
 
 proc            = midprocess.das();
 proc.code       = code.mex();

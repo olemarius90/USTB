@@ -52,27 +52,34 @@ __global__ void beamform(const size_t N_pixels, const size_t N_channels, const s
 	{
 		for (size_t j = 0; j < N_waves; j++)
 		{
-			float tDelay = tx_delay[i + j * N_pixels];
 			float tApod = tx_apod[i + j * N_pixels];
 
-			for (size_t g = 0; g < N_channels; g++)
-			{
-				float delay = tDelay + rx_delay[i + g * N_pixels];
-				float apod = tApod * rx_apod[i + g * N_pixels];
+            if (tApod != 0.0)
+            {
+                float tDelay = tx_delay[i + j * N_pixels];
 
-				float denay = delay * Fs - i0;
+                for (size_t g = 0; g < N_channels; g++)
+                {
+                    float apod = tApod * rx_apod[i + g * N_pixels];
 
-				cuFloatComplex phase;
+                    if (apod != 0.0)
+                    {
+                        float delay = tDelay + rx_delay[i + g * N_pixels];
+                        float denay = delay * Fs - i0;
 
-				sincosf(wd * delay, &phase.y, &phase.x);
+                        cuFloatComplex phase;
 
-				// For maximum bandwidth usage adiacent threads must fetch adiacent memory locations in texture --> inputSamplingRate ~ outputSamplingRate
-				cuFloatComplex pre_bf_data = tex1DLayered<cuFloatComplex>(tex, denay, g + j * N_channels);
+                        sincosf(wd * delay, &phase.y, &phase.x);
 
-				bf_data[i].x += (pre_bf_data.x * phase.x - pre_bf_data.y * phase.y) * apod;
-				bf_data[i].y += (pre_bf_data.x * phase.y + pre_bf_data.y * phase.x) * apod;
-			}
-		}
+                        // For maximum bandwidth usage adiacent threads must fetch adiacent memory locations in texture --> inputSamplingRate ~ outputSamplingRate
+                        cuFloatComplex pre_bf_data = tex1DLayered<cuFloatComplex>(tex, denay, g + j * N_channels);
+
+                        bf_data[i].x += (pre_bf_data.x * phase.x - pre_bf_data.y * phase.y) * apod;
+                        bf_data[i].y += (pre_bf_data.x * phase.y + pre_bf_data.y * phase.x) * apod;
+                    }
+                }
+            }
+        }
 	}
 }
 
@@ -107,7 +114,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	float Fs = *mxGetSingles(prhs[1]);		// Sampling frequency
 	float t0 = *mxGetSingles(prhs[2]);		// Initial time
 	float Fd = *mxGetSingles(prhs[7]);		// Modulation frequency
-	float i0 = t0 * Fs -0.5;                // Normalised initial sample
+	float i0 = t0 * Fs - 0.5;               // Normalised initial sample
 
 	float wd = fabsf(Fd) > eps ? 2 * pi * Fd : 0.0;		// Demodulation frequency expressed in rad/s
 
