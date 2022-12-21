@@ -244,7 +244,7 @@ classdef apodization < uff
                     h.data_backup=kron(ABlock,ones(h.focus.N_z_axis,1));
                     
                 % sector scan
-                elseif isa(h.focus,'uff.sector_scan')
+                elseif isa(h.focus,'uff.sector_scan')||isa(h.focus,'uff.sector_scan_na')
                     assert(N_waves==h.focus.N_azimuth_axis/h.MLA,'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
                     ACell=repmat({ones(h.MLA,1)},[1,h.focus.N_azimuth_axis/h.MLA]);
                     if (h.MLA_overlap>0)
@@ -333,6 +333,8 @@ classdef apodization < uff
             if isempty(h.origin)
                 if isa(h.probe,'uff.curvilinear_array')
                     h.origin = uff.point('xyz',[0 0 -h.probe.radius]);
+                elseif isa(h.probe,'uff.curvilinear_matrix_array')
+                    h.origin = uff.point('xyz',[0 0 -h.probe.radius_x]);
                 elseif isa(h.focus,'uff.sector_scan')
                     h.origin = h.focus.apex;
                 end
@@ -348,6 +350,15 @@ classdef apodization < uff
                 x_dist=h.probe.radius*bsxfun(@minus,pixel_azimuth, element_azimuth);
                 y_dist=h.origin.y-y;
                 z_dist=pixel_distance*ones(1,h.N_elements)-h.probe.radius;
+            elseif isa(h.probe,'uff.curvilinear_matrix_array')
+                element_azimuth = atan2(x-h.origin.x, z-h.origin.z);
+                
+                pixel_azimuth = atan2(h.focus.x-h.origin.x, h.focus.z-h.origin.z);
+                pixel_distance = sqrt((h.focus.x-h.origin.x).^2+(h.focus.z-h.origin.z).^2);
+                
+                x_dist=h.probe.radius_x*bsxfun(@minus,pixel_azimuth, element_azimuth);
+                y_dist=h.origin.y-y;
+                z_dist=pixel_distance*ones(1,h.N_elements)-h.probe.radius_x;
 
             % if we have a sector scan
             elseif isa(h.focus,'uff.sector_scan')
@@ -409,7 +420,39 @@ classdef apodization < uff
                 % diverging or converging waves
                 else
                     % distances
-                    if isa(h.focus,'uff.sector_scan')
+                    if logical(h.sequence(n).origin.distance)
+
+                        % distance to source
+                        x_dist=h.focus.x-h.sequence(n).source.x;
+                        y_dist=h.focus.y-h.sequence(n).source.y;
+                        z_dist=h.focus.z-h.sequence(n).source.z;
+
+                        % source angle respect origin
+                        z_source_origin=h.sequence(n).source.z-h.sequence(n).origin.z;
+                        if abs(z_source_origin)>0
+                            source_theta=atan2(h.sequence(n).source.x-h.sequence(n).origin.x, z_source_origin);
+                            source_phi=atan2(h.sequence(n).source.y-h.sequence(n).origin.y, z_source_origin);
+                        else
+                            source_theta=0; source_phi=0;
+                        end
+                        
+                        % apply beam & tilt
+                        [x_dist, y_dist, z_dist] = tools.rotate_points(x_dist, y_dist, z_dist, h.tilt(1) + source_theta, h.tilt(2) + source_phi);
+                        
+                        % minimum aperture
+                        z_dist(z_dist>=0 & z_dist<h.minimum_aperture(1)/h.f_number(1)) = h.minimum_aperture(1)/h.f_number(1);
+                        z_dist(z_dist<0 & z_dist>-h.minimum_aperture(1)/h.f_number(1)) = -h.minimum_aperture(1)/h.f_number(1);
+
+                        % maximum aperture
+                        z_dist(z_dist>=0 & z_dist>h.maximum_aperture(1)/h.f_number(1)) = h.maximum_aperture(1)/h.f_number(1);
+                        z_dist(z_dist<0 & z_dist<-h.maximum_aperture(1)/h.f_number(1)) = -h.maximum_aperture(1)/h.f_number(1);
+                        
+                        % compute tangents & distance
+                        tan_theta(:,n) = x_dist./z_dist;
+                        tan_phi(:,n) = y_dist./z_dist;
+                        distance(:,n) = z_dist;
+
+                    elseif isa(h.focus,'uff.sector_scan')
                         
                         % distance to source
                         x_dist=h.focus.x-h.sequence(n).source.x;

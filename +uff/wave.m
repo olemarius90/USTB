@@ -41,13 +41,15 @@ classdef wave < uff
     
     %   authors: Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
     %            Ole Marius Hoel Rindal <olemarius@olemarius.net>
+    %            Anders E. Vrålstad <anders.e.vralstad@ntnu.no>
     %
-    %   $Last updated: 2017/10/13$
+    %   $Last updated: 2022/12/09$
     
     %% compulsory properties
     properties  (Access = public)
-        wavefront         % WAVEFRONT enumeration class
+        wavefront = uff.wavefront.spherical % WAVEFRONT enumeration class
         source            % POINT class
+        origin            % POINT class
         apodization       % APODIZATION class
     end
     
@@ -55,8 +57,8 @@ classdef wave < uff
     properties  (Access = public)
         probe              % PROBE class 
         event              % index of the transmit/receive event this wave refers to
-        delay              % time interval between t0 and acquistion start
-        sound_speed        % reference speed of sound
+        delay = 0          % time interval between t0 and acquistion start
+        sound_speed = 1540 % reference speed of sound
     end
     
     
@@ -73,10 +75,8 @@ classdef wave < uff
             h = h@uff(varargin{:});
             
             % default values
-            h.source        = uff.point();
-            h.wavefront     = uff.wavefront.spherical;
-            h.sound_speed   = 1540; 
-            h.delay         = 0;    
+            if ~isa(h.source, 'uff.point'), h.source = uff.point(); end
+            if ~isa(h.origin, 'uff.point'), h.origin = uff.point(); end
         end
     end
     
@@ -134,6 +134,10 @@ classdef wave < uff
             assert(isa(in_source,'uff.point'), 'The source is not a POINT class. Check HELP POINT');
             h.source=in_source;
         end
+        function h=set.origin(h,in_origin)
+            assert(isa(in_origin,'uff.point'), 'The origin is not a POINT class. Check HELP POINT');
+            h.origin=in_origin;
+        end
         function h=set.probe(h,in_probe)
             assert(isa(in_probe,'uff.probe'), 'The probe is not a PROBE class. Check HELP PROBE');
             h.probe=in_probe;
@@ -154,16 +158,17 @@ classdef wave < uff
         function value=get.delay_values(h)
             assert(~isempty(h.probe),'The PROBE must be inserted for delay calculation');
             assert(~isempty(h.sound_speed),'The sound speed must be inserted for delay calculation');
-            
-            if ~isinf(h.source.distance)
+
+            source_origin_dist = sqrt(sum(h.source.xyz.^2-h.origin.xyz.^2));
+            if ~isinf(source_origin_dist)
                 dst=sqrt((h.probe.x-h.source.x).^2+(h.probe.y-h.source.y).^2+(h.probe.z-h.source.z).^2);
                 if(h.source.z<0)
-                    value=dst/h.sound_speed-h.source.distance/h.sound_speed;
+                    value=dst/h.sound_speed-abs(source_origin_dist/h.sound_speed);
                 else
-                    value=h.source.distance/h.sound_speed-dst/h.sound_speed;
+                    value=source_origin_dist/h.sound_speed-dst/h.sound_speed;
                 end
             else
-                value=h.probe.x*sin(h.source.azimuth)/h.sound_speed+h.probe.y*sin(h.source.elevation)/h.sound_speed;
+                value=(h.probe.x-h.origin.x)*sin(h.source.azimuth)/h.sound_speed+(h.probe.y-h.origin.y)*sin(h.source.elevation)/h.sound_speed;
             end
         end
         

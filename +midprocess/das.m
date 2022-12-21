@@ -14,7 +14,8 @@ classdef das < midprocess
         % spherical transmit delay model enumeration for deciding model when the source is in front of the transducer
         spherical_transmit_delay_model = spherical_transmit_delay_model.hybrid;  
         pw_margin = 1/1000;                 % The margin of the area around focus in m for the spherical_transmit_delay_model.hybrid
-        transmit_delay                      % Variable returning the calculated tx delay so that it can be plotted
+        transmit_delay                      % Variable returning the calculated tx part of the receive delay so that it can be plotted
+        receive_delay                       % Variable returning the calculated rx part of the receive delay so that it can be plotted
     end
     
     %% constructor
@@ -66,6 +67,7 @@ classdef das < midprocess
             ym=bsxfun(@minus,h.channel_data.probe.y.',h.scan.y);
             zm=bsxfun(@minus,h.channel_data.probe.z.',h.scan.z);
             receive_delay=single(sqrt(xm.^2+ym.^2+zm.^2)/h.channel_data.sound_speed);
+            h.receive_delay = receive_delay;
             
             % calculate transmit delay
             transmit_delay=zeros(N_pixels,N_waves);
@@ -81,8 +83,8 @@ classdef das < midprocess
                             transmit_delay(:,n_wave)=(-1).^(h.scan.z<h.channel_data.sequence(n_wave).source.z).*sqrt((h.channel_data.sequence(n_wave).source.x-h.scan.x).^2+(h.channel_data.sequence(n_wave).source.y-h.scan.y).^2+(h.channel_data.sequence(n_wave).source.z-h.scan.z).^2);
                             
                             % add distance from source to origin
-                            if (h.channel_data.sequence(n_wave).source.z<-1e-3)
-                                transmit_delay(:,n_wave)=transmit_delay(:,n_wave)-h.channel_data.sequence(n_wave).source.distance;
+                            if (h.channel_data.sequence(n_wave).source.z<-1e-3) %Diverging Wave (DW) transmit
+                                transmit_delay(:,n_wave)=transmit_delay(:,n_wave)-abs(h.channel_data.sequence(n_wave).source.distance);
                             else % if virtual source in front of transducer
                                 switch h.spherical_transmit_delay_model
                                     % Please see the reference below for a documentation and definition of these three models and the differences.
@@ -102,7 +104,7 @@ classdef das < midprocess
                                             mask_apod.minimum_aperture = [0 0];
                                             mask_apod.focus = h.scan;
                                             mask_apod.probe = h.channel_data.probe;
-                                            if isa(h.scan,'uff.sector_scan')
+                                            if isa(h.scan,'uff.sector_scan')||isa(h.scan,'uff.sector_scan_na')
                                                 mask_apod.f_number = 4; %This should be set according to the actually transmitted f number
                                                 mask_all_waves = reshape(mask_apod.data,h.scan.N_depth_axis,h.scan.N_azimuth_axis,numel(h.channel_data.sequence));
                                             elseif isa(h.scan,'uff.linear_scan')
@@ -119,7 +121,7 @@ classdef das < midprocess
                                         % Calculate the "plane wave" in the transmit direction
                                         if isa(h.scan,'uff.linear_scan')
                                             plane_delay = (-1).^(h.scan.z<h.channel_data.sequence(n_wave).source.z).*sqrt((h.channel_data.sequence(n_wave).source.z-h.scan.z).^2) + h.channel_data.sequence(n_wave).source.distance;
-                                        elseif isa(h.scan,'uff.sector_scan')
+                                        elseif isa(h.scan,'uff.sector_scan')||isa(h.scan,'uff.sector_scan_na')
                                             plane_delay = h.scan.z*cos(h.channel_data.sequence(n_wave).source.azimuth)*cos(h.channel_data.sequence(n_wave).source.elevation)+h.scan.x*sin(h.channel_data.sequence(n_wave).source.azimuth)*cos(h.channel_data.sequence(n_wave).source.elevation)+h.scan.y*sin(h.channel_data.sequence(n_wave).source.elevation);
                                         else
                                             error('Only linear scan and sector scan in 2D is supported for the hybrid spherical transmit delay model.');
@@ -153,8 +155,9 @@ classdef das < midprocess
             % convert to single
             transmit_delay = single(transmit_delay);
             
-            % Saving tx delay to a public parameter to be able to plot it
+            % Saving receive tx and rx delay to a public parameter to be able to plot it
             h.transmit_delay = transmit_delay;
+            
             
             % precalculating hilbert (if needed)
             tools.check_memory(prod([size(h.channel_data.data) 8]));
@@ -198,7 +201,18 @@ classdef das < midprocess
                                            receive_delay,...
                                            modulation_frequency,...
                                            int32(h.dimension));
-                        
+                    
+                    case code.mexFast
+                        aux_data=mex.dasFast_c(data,...
+                                           sampling_frequency,...
+                                           initial_time,...
+                                           tx_apodization,...
+                                           rx_apodization,...
+                                           transmit_delay,...
+                                           receive_delay,...
+                                           modulation_frequency,...
+                                           int32(h.dimension));
+                    
                     %% MATLAB
                     case code.matlab
                         % workbar

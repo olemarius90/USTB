@@ -42,6 +42,7 @@ classdef beamformed_data < uff
         pulse                      % PULSE object
         sampling_frequency         % Sampling frequency in the depth direction in [Hz]
         modulation_frequency       % Modulation frequency in [Hz]
+        frame_rate = 1             % Framerate for Video or GIF file to be saved [fps]
     end
     
     %% dependent properties
@@ -267,6 +268,29 @@ classdef beamformed_data < uff
                     set(gca,'GridLineStyle','none');
                     box off
                     drawnow;
+                case 'uff.sector_scan_na'
+                    x_matrix=reshape(h.scan.x,[h.scan(1).N_depth_axis h.scan(1).N_azimuth_axis]);
+                    z_matrix=reshape(h.scan.z,[h.scan(1).N_depth_axis h.scan(1).N_azimuth_axis ]);
+                    h.all_images = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis Nrx*Ntx*Nframes]);
+                    h.image_handle = pcolor(axis_handle,x_matrix*scale_factor,z_matrix*scale_factor,h.all_images(:,:,1));
+                    shading(axis_handle,'flat');
+                    set(axis_handle,'fontsize',14);
+                    set(axis_handle,'YDir','reverse');
+                    axis(axis_handle,'tight','equal');
+                    cbar = colorbar(axis_handle);
+                    set(cbar,'color',font_color);
+                    colormap(axis_handle,'gray');
+                    xlabel(axis_handle,['x[' spatial_units ']']); 
+                    ylabel(axis_handle,['z[' spatial_units ']']);
+                    caxis(axis_handle,[min_value max_value]);
+                    title(axis_handle,in_title,'color',font_color);
+                    set(gca,'YColor',font_color); 
+                    set(gca,'XColor',font_color); 
+                    set(gca,'Color',background_color);
+                    set(gca,'GridColor',background_color);
+                    set(gca,'GridLineStyle','none');
+                    box off
+                    drawnow;
                 case 'uff.scan'
                     error('The uff.scan cannot be plotted automatically as it can contain arbitrarily placed voxel. The data must be reshaped and plotted manually. To avoid this, you may use the structures uff.linear_scan and uff.sector_scan instead.');
                 otherwise
@@ -295,6 +319,8 @@ classdef beamformed_data < uff
                 case 'uff.linear_scan'
                     img = reshape(envelope,[h.scan.N_z_axis h.scan.N_x_axis size(h.data,3) size(h.data,4)]);
                 case 'uff.sector_scan'
+                    img = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis size(h.data,3) size(h.data,4)]);
+                case 'uff.sector_scan_na'
                     img = reshape(envelope,[h.scan.N_depth_axis h.scan.N_azimuth_axis size(h.data,3) size(h.data,4)]);
                 otherwise
                     error(sprintf('Dont know how to plot on a %s yet. Sorry!',class(b_data.scan)));
@@ -404,10 +430,11 @@ classdef beamformed_data < uff
                         set(h.image_handle,'CData',h.all_images(:,:,h.current_frame));
                         title([h.in_title,', Frame = ',num2str(h.current_frame),'/',num2str(size(h.all_images,3))]);
                         drawnow();
-                        pause(0.05);
+                        pause(1/h.frame_rate);
                 catch ME
                     if strcmp(ME.identifier,'MATLAB:class:InvalidHandle')
                         %The Figure was closed while the video was running
+                        break
                     else
                         rethrow(ME)
                     end
@@ -416,10 +443,10 @@ classdef beamformed_data < uff
         end
         
          function save_movie_loop(h,var1,var2,var3)
-             FileName = uiputfile('movie.mp4','Save movie loop as');
-             vidObj = VideoWriter(FileName,'MPEG-4');
+             [FileName,path] = uiputfile('movie.mp4','Save movie loop as');
+             vidObj = VideoWriter([path,filesep,FileName],'MPEG-4');
              vidObj.Quality = 100;
-             vidObj.FrameRate = 25;
+             vidObj.FrameRate = h.frame_rate;
              open(vidObj);
              for i = 1:size(h.all_images,3)
                  
@@ -431,5 +458,34 @@ classdef beamformed_data < uff
              end
              close(vidObj)
         end
+    end
+    
+    methods (Access = public )
+         function save_as_gif(h,filename)
+             if nargin < 2
+                FileName = uiputfile('movie.gif','Save gif loop as');
+             else
+                FileName = filename;
+             end
+             
+             delay_time = 1/h.frame_rate;
+
+             for i = 1:size(h.all_images,3)
+                 
+                 set(h.image_handle,'CData',h.all_images(:,:,i));
+                 title([h.in_title,', Frame = ',num2str(i),'/',num2str(size(h.all_images,3))]);
+                 drawnow();
+                 frame = getframe(gcf);
+                 im = frame2im(frame);
+                 [imind,cm] = rgb2ind(im,256);
+                 
+                 if i == 1
+                     imwrite(imind,cm,FileName,'gif', 'Loopcount',inf, 'DelayTime',delay_time);
+                 else
+                     imwrite(imind,cm,FileName,'gif','WriteMode','append', 'DelayTime',delay_time);
+                 end
+                 
+             end
+         end
     end
 end
