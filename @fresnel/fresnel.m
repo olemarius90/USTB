@@ -79,8 +79,7 @@ classdef fresnel < handle
             out_dataset.sampling_frequency = h.sampling_frequency();
             out_dataset.sound_speed = h.phantom.sound_speed;
             out_dataset.PRF = h.PRF;
-
-            
+ 
             % computing geometry relations to the point
             distance  = sqrt((h.phantom.x.'-h.probe.x).^2+(h.phantom.y.'-h.probe.y).^2+(h.phantom.z.'-h.probe.z).^2);
             theta = atan2(h.phantom.x.'-h.probe.x, h.phantom.z.'-h.probe.z)-h.probe.theta;
@@ -129,10 +128,11 @@ classdef fresnel < handle
                 
                 % Computing the transmit signal
                 transmit_delay = time_1w - (propagation_delay + h.sequence(n_wave).delay_values.');
-                transmit_signal = sum(h.pulse.signal(transmit_delay).*h.sequence(n_wave).apodization_values.*attenuation, 2);
+                transmit_signal = sum(h.pulse.signal(transmit_delay).*h.sequence(n_wave).apodization_values(:).'.*attenuation, 2);
                 
-                % Computing the receive signal
                 receive_delay = time_2w - propagation_delay;
+
+                % Computing the receive signal
                 if wave_delays
                     receive_delay = receive_delay + h.sequence(n_wave).delay-time_2w(1);
                 end
@@ -157,7 +157,7 @@ classdef fresnel < handle
             h.phantom = in_phantom;
         end
         function set.pulse(h,in_pulse)
-            validateattributes(in_probe, {'uff.pulse'}, {'scalar'})
+            validateattributes(in_pulse, {'uff.pulse'}, {'scalar'})
             h.pulse = in_pulse;
         end
         function set.probe(h,in_probe)
