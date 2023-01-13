@@ -137,7 +137,7 @@ classdef beamformed_data < uff
             
             % If more than one frame, add the GUI buttons
             [Npixels Nrx Ntx Nframes]=size(data);
-            if Nrx*Ntx*Nframes > 1 && isa(parent_handle_in, 'matlab.ui.Figure')
+            if Nrx*Ntx*Nframes > 1 && (isa(parent_handle_in, 'matlab.ui.Figure') || isempty(parent_handle_in)) 
                 set(h.figure_handle, 'Position', [100, 100, 600, 700]);
                 h.current_frame = 1;
                 h.add_buttons(h.figure_handle);
