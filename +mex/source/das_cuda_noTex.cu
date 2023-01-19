@@ -56,21 +56,52 @@ __device__  inline cuFloatComplex lerp(cuFloatComplex v0, cuFloatComplex v1, flo
 __global__ void beamform(const size_t N_times, const size_t N_pixels, const size_t N_channels, const size_t N_waves, const float Fs, cuFloatComplex* bf_data, const cuFloatComplex* __restrict__ ch_data,
                          const float* __restrict__ tx_delay, const float* __restrict__ rx_delay, const float* __restrict__ tx_apod, const float* __restrict__ rx_apod, const float i0, const float wd)
 {
-    size_t pixel_idx = blockIdx.x * blockDim.x + threadIdx.x; // pixel idx
+	// Define shared memory variables
+	extern __shared__ float rDelay[];
+	extern __shared__ float tDelay[];
+	extern __shared__ float rApod[];
+	extern __shared__ float tApod[];
+
+	extern __shared__ cuFloatComplex pre_bf_data[];
+
+    size_t pixel_idx = blockIdx.x * blockDim.x + threadIdx.x; // pixel
     size_t pixel_stride = blockDim.x * gridDim.x;
+
+    size_t channel_idx = blockIdx.y * blockDim.y + threadIdx.y; // channel
+    size_t channel_stride = blockDim.y * gridDim.y;
+
+	size_t wave_idx = blockIdx.z * blockDim.z + threadIdx.z; // wave
+    size_t wave_stride = blockDim.z * gridDim.z;
+
+	// First load data in shared memory		
+	for (size_t i = pixel_idx; i < N_pixels; i += pixel_stride)
+    {
+        for (size_t g = channel_idx; g < N_channels; g+= channel_stride)
+        {
+			rDelay[threadIdx.x + threadIdx.y*blockDim.x] = rx_delay[i + g * N_pixels];
+			rApod[threadIdx.x + threadIdx.y*blockDim.x] = rx_apod[i + g * N_pixels];
+		}
+
+		for (size_t j = wave_idx; j < N_waves; j+= wave_stride)
+        {
+			tDelay[threadIdx.x + threadIdx.z*blockDim.x] = tx_delay[i + j * N_pixels];
+			tApod[threadIdx.x + threadIdx.z*blockDim.x] = tx_apod[i + j * N_pixels];
+		}
+	}
+
+	__syncthreads();
 
     for (size_t i = pixel_idx; i < N_pixels; i += pixel_stride)
     {
-        for (size_t j = 0; j < N_waves; j++)
+        for (size_t g = channel_idx; g < N_channels; g += channel_stride)
         {
-            const float tApod = tx_apod[i + j * N_pixels];
-            const float tDelay = tx_delay[i + j * N_pixels];
-
-            for (size_t g = 0; g < N_channels; g++)
+            for (size_t j = wave_idx; g < N_waves; j += wave_stride)
             {
-                const float apod = tApod * rx_apod[i + g * N_pixels];
+                const float apod = tApod[threadIdx.x + threadIdx.z*blockDim.x] * 
+					rApod[threadIdx.x + threadIdx.y*blockDim.x];
 
-                const float delay = tDelay + rx_delay[i + g * N_pixels];
+                const float delay = tDelay[threadIdx.x + threadIdx.z*blockDim.x] + 
+					rDelay[threadIdx.x + threadIdx.y*blockDim.x];
                 const float denay = delay * Fs - i0;
 
                 cuFloatComplex phase;
@@ -84,12 +115,19 @@ __global__ void beamform(const size_t N_times, const size_t N_pixels, const size
 
                 if (n > 0 & n+1<N_times-1)
                 {
-                    cuFloatComplex pre_bf_data = lerp(ch_data[n + k], ch_data[n + 1 + k], t);
+                    cuFloatComplex val = lerp(ch_data[n + k], ch_data[n + 1 + k], t);
 
 
-                    bf_data[i].x += (pre_bf_data.x * phase.x - pre_bf_data.y * phase.y) * apod;
-                    bf_data[i].y += (pre_bf_data.x * phase.y + pre_bf_data.y * phase.x) * apod;
+                    pre_bf_data[threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y].x = 
+						(val.x * phase.x - val.y * phase.y) * apod;
+                    pre_bf_data[threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y].y = 
+						(val.x * phase.y + val.y * phase.x) * apod;
                 }
+
+				__syncthreads();
+
+				// Perform shared memory reduction
+				// TODO...
             }
         }
     }
@@ -201,11 +239,11 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	// Beamforming loop
 	for (size_t n_frame = 0; n_frame < N_frames; n_frame += N_streams)
 	{
-		// size_t Nf_streams = (N_frames - n_frame) % N_streams == 0 ? N_streams : 1;
+		size_t Nc_streams = (N_frames - n_frame) < N_streams ? 1 : N_streams;
 
-		for (size_t n_stream = 0; n_stream < N_streams; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
-			for (size_t n_wave = 0; n_wave < N_waves; n_wave++)
+			for (size_t n_wave = 0; n_wave < Nc_waves; n_wave++)
 			{
 				// Copy channel data into global memory
 			    cudaErrorCheck(cudaMemcpyAsync(device_ch_data[n_stream], &host_ch_data[(n_frame + n_stream) * N_times * N_channels * N_waves], 
@@ -214,21 +252,18 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			}
 		}
 
-		for (size_t n_stream = 0; n_stream < N_streams; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
- 			// Set device beamformed data to 0
+			// Set device beamformed data to 0
 			cudaErrorCheck(cudaMemsetAsync(device_bf_data[n_stream], 0, N_pixels * sizeof(cuFloatComplex), frame_stream[n_stream]));
-		}
 
-		for (size_t n_stream = 0; n_stream < N_streams; n_stream++)
-		{
 			// Call beamforming kernel
 			beamform <<< N_blocks, block_size, 0, frame_stream[n_stream] >>> (N_times, N_pixels, N_channels, N_waves, Fs, 
             device_bf_data[n_stream], device_ch_data[n_stream], device_tx_delay, device_rx_delay, device_tx_apod, device_rx_apod, i0, wd);
 			cudaErrorCheck(cudaPeekAtLastError());
 		}
 
-		for (size_t n_stream = 0; n_stream < N_streams; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
 			// Transfer beamformed data back to host
 			cudaErrorCheck(cudaMemcpyAsync(&host_bf_data[(n_frame + n_stream) * N_pixels], device_bf_data[n_stream], 

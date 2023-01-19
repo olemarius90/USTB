@@ -50,21 +50,21 @@ __global__ void beamform(const size_t N_pixels, const size_t N_channels, const s
 
 	for (size_t i = pixel_idx; i < N_pixels; i += pixel_stride)
 	{
-		for (size_t j = 0; j < N_waves; j++)
+		for (size_t g = 0; g < N_channels; g++)
 		{
-			float tApod = tx_apod[i + j * N_pixels];
+			float rApod = rx_apod[i + g * N_pixels];
 
-            if (tApod != 0.0)
+            if (rApod > 0.0)
             {
-                float tDelay = tx_delay[i + j * N_pixels];
+                float rDelay = rx_delay[i + g * N_pixels];
 
-                for (size_t g = 0; g < N_channels; g++)
+                for (size_t j = 0; j < N_waves; j++)
                 {
-                    float apod = tApod * rx_apod[i + g * N_pixels];
+                    float apod = tx_apod[i + j * N_pixels] * rApod;
 
-                    if (apod != 0.0)
+                    if (apod > 0.0)
                     {
-                        float delay = tDelay + rx_delay[i + g * N_pixels];
+                        float delay = rDelay + tx_delay[i + j * N_pixels];
                         float denay = delay * Fs - i0;
 
                         cuFloatComplex phase;
@@ -226,9 +226,9 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	// Beamforming loop
 	for (size_t n_frame = 0; n_frame < N_frames; n_frame += N_streams)
 	{
-		size_t N_streams_currFrame = (N_frames - n_frame) % N_streams == 0 ? N_streams : 1;
+		size_t Nc_streams = (N_frames - n_frame) < N_streams ? 1 : N_streams;
 
-		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
 			// Copy channel data into dedicated texture memory
 			memcpyParams[n_stream].srcPtr = make_cudaPitchedPtr(&host_ch_data[(n_frame + n_stream) * N_waves * N_channels * N_times], N_times * sizeof(cuFloatComplex), N_times, 1);
@@ -236,21 +236,18 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
 		}
 
-		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
 			// Set device beamformed data to 0
 			cudaErrorCheck(cudaMemsetAsync(device_bf_data[n_stream], 0, N_pixels * sizeof(cuFloatComplex), frame_stream[n_stream]));
-		}
 
-		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
-		{
 			// Call beamforming kernel
 			beamform <<< N_blocks, block_size, 0, frame_stream[n_stream] >>> (N_pixels, N_channels, N_waves, Fs, device_bf_data[n_stream], tex[n_stream], device_tx_delay,
 				device_rx_delay, device_tx_apod, device_rx_apod, i0, wd);
 			cudaErrorCheck(cudaPeekAtLastError());
 		}
 
-		for (size_t n_stream = 0; n_stream < N_streams_currFrame; n_stream++)
+		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
 			// Transfer beamformed data back to host
 			cudaErrorCheck(cudaMemcpyAsync(&host_bf_data[(n_frame + n_stream) * N_pixels], device_bf_data[n_stream], N_pixels * sizeof(cuFloatComplex), cudaMemcpyDeviceToHost, frame_stream[n_stream]));
