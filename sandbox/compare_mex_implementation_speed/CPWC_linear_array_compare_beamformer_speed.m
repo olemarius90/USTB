@@ -20,7 +20,7 @@ close all
 clc
 
 do_demodulation = true;
-nFrames = 1001;
+nFrames = 1:100:1001;
 
 %% Phantom
 x_sca=[zeros(1,7) -15e-3:5e-3:15e-3];
@@ -76,7 +76,7 @@ if do_demodulation
 end
 
 %% Scan
-scan = uff.linear_scan('x_axis',linspace(-2e-2,2e-2,256).', 'z_axis', linspace(0, 4e-2, 512).');
+scan = uff.linear_scan('x_axis',linspace(-2e-2,2e-2,256).', 'z_axis', linspace(0, 4e-2, 768).');
 
 %% Pipeline
 
@@ -100,15 +100,10 @@ pipe.go({proc});
 
 %% Test beamforming speed
 
-dOp_per_frame = scan.N_pixels*channel_data.N_channels*channel_data.N_waves;
-if do_demodulation
-    dOp_per_frame = dOp_per_frame * 2; % complex data
-end
+dOp_per_frame = 2*scan.N_pixels*channel_data.N_channels*channel_data.N_waves;
 
 das_mexFast_time = zeros([length(nFrames), 1]);
 das_mex_gpu_time = zeros([length(nFrames), 1]);
-
-profile on
 
 for n=1:length(nFrames)
     % replicate frames
@@ -125,18 +120,14 @@ for n=1:length(nFrames)
     das_mex_gpu_time(n) = toc();
 
     % Time USTB's MEX FAST CPU implementation
-%     proc            = midprocess.das();
-%     proc.code       = code.mexFast;
-%     proc.dimension  = dimension.both;
-%     fprintf(1, 'Processing %d frames: MEX C FAST\n', nFrames(n))
-%     tic()
-%     bf_data_mexFast_cpu = pipe.go({proc});
-%     das_mexFast_time(n) = toc();
+    proc            = midprocess.das();
+    proc.code       = code.mexFast;
+    proc.dimension  = dimension.both;
+    fprintf(1, 'Processing %d frames: MEX C FAST\n', nFrames(n))
+    tic()
+    bf_data_mexFast_cpu = pipe.go({proc});
+    das_mexFast_time(n) = toc();
 end
-
-profile off
-
-profile viewer
 %% Plot the images for visual inspection of the results
 figure('Color', 'white')
 tiledlayout(1, 2, "TileSpacing", "compact", "Padding", "compact")

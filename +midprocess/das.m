@@ -189,7 +189,7 @@ classdef das < midprocess
             end
             
             % delay & sum
-            if any(data(:)>0) % only process if any data > 0
+            if any(data, 'all') % only process if any data > 0
                 
                 switch h.code
                     %% MEX
@@ -380,12 +380,7 @@ classdef das < midprocess
 
                     otherwise
                         error('Unknown code implementation requested');
-                end % end switch
-                
-                % assign phase according to 2 times the receive propagation distance
-                if ( abs(w0) > eps )
-                    aux_data=bsxfun(@times,aux_data,exp(-1i*w0*2*h.scan.reference_distance/h.channel_data.sound_speed));
-                end                
+                end % end switch            
             end % end if
             
             % copy data to object

@@ -87,7 +87,6 @@ __global__ void beamform(const size_t N_pixels, const size_t N_channels, const s
 
                         __sincosf(wd * delay, &phase.y, &phase.x);
 
-                        // For maximum bandwidth usage adiacent threads must fetch adiacent memory locations in texture --> inputSamplingRate ~ outputSamplingRate
                         cuFloatComplex val = tex1DLayered<cuFloatComplex>(tex, denay, g + j * N_channels);
 
                         bf_data[i].x += (val.x * phase.x - val.y * phase.y) * apod;
@@ -242,7 +241,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	// Beamforming loop
 	for (size_t n_frame = 0; n_frame < N_frames; n_frame += N_streams)
 	{
-		size_t Nc_streams = (N_frames - n_frame) < N_streams ? 1 : N_streams;
+		size_t Nc_streams = (N_frames - n_frame) < N_streams |  N_streams == 1 ? 1 : N_streams;
 
 		for (size_t n_stream = 0; n_stream < Nc_streams; n_stream++)
 		{
