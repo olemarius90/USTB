@@ -62,18 +62,18 @@ switch testCase
     case 0
         pul=uff.pulse();
         pul.center_frequency=7e6;       % transducer frequency [MHz]
-        pul.fractional_bandwidth=0.8;     % fractional bandwidth [unitless]
+        pul.fractional_bandwidth=0.8;   % fractional bandwidth [unitless]
 
     case 1
         pul=uff.pulse();
         pul.center_frequency=4e6;       % transducer frequency [MHz]
-        pul.fractional_bandwidth=0.8;     % fractional bandwidth [unitless]
+        pul.fractional_bandwidth=0.8;   % fractional bandwidth [unitless]
 end
 %% Sequence generation
 
 switch testCase
     case 0
-        nTx=16;
+        nTx=15;
         angles=linspace(-10, 10, nTx)/180*pi;
         seq=uff.wave();
 
@@ -85,7 +85,7 @@ switch testCase
             seq(n).sound_speed=pha.sound_speed;
         end
     case 1
-        nTx=81; % n transmits
+        nTx=192; % n transmits
         F = 6.5e-2; % focus speed
         angles=linspace(-40, 40, nTx)/180*pi;
         seq=uff.wave();
@@ -127,7 +127,7 @@ switch testCase
     case 0
         scan = uff.linear_scan('x_axis',linspace(-2e-2,2e-2,256).', 'z_axis', linspace(0, 4e-2, 512).');
     case 1
-        scan = uff.sector_scan('azimuth_axis',linspace(angles(1),angles(end),256).', 'depth_axis', linspace(0, 13e-2, 768).');
+        scan = uff.sector_scan('azimuth_axis',linspace(angles(1),angles(end),256).', 'depth_axis', linspace(0, 12e-2, 768).');
 end
 
 %% Pipeline
@@ -136,12 +136,22 @@ pipe=pipeline();
 pipe.channel_data=channel_data;
 pipe.scan=scan;
 
-pipe.receive_apodization.window=uff.window.hamming;
-pipe.receive_apodization.f_number=3;
+switch testCase
+    case 0
+        pipe.receive_apodization.window=uff.window.hamming;
+        pipe.receive_apodization.f_number=2;
 
-pipe.transmit_apodization.window=uff.window.hamming;
-pipe.transmit_apodization.f_number=3;
-pipe.transmit_apodization.minimum_aperture = 4e-3 * pipe.transmit_apodization.f_number(1)^2;
+        pipe.transmit_apodization.window=uff.window.hamming;
+        pipe.transmit_apodization.f_number=2;
+    case 1
+        pipe.receive_apodization.window=uff.window.none;
+        pipe.receive_apodization.f_number=3.5;
+        pipe.receive_apodization.maximum_aperture = 2e-2 * pipe.receive_apodization.f_number(1)^2;
+
+        pipe.transmit_apodization.window=uff.window.hamming;
+        pipe.transmit_apodization.f_number=3.5;
+        pipe.transmit_apodization.minimum_aperture = 5e-3 * pipe.transmit_apodization.f_number(1)^2;
+end
 
 proc            = midprocess.das();
 proc.code       = code.mex();
@@ -235,6 +245,7 @@ ylabel("z [cm]")
 title("mex FAST")
 
 linkaxes(hAx)
+linkprop(hAx, {'CameraPosition','CameraUpVector'});
 
 diff = mean(abs(bf_data_mex_gpu.data(:,1) - bf_data_mexFast_cpu.data(:,1)), 1)
 
