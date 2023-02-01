@@ -164,8 +164,8 @@ classdef das < midprocess
             % precalculating hilbert (if needed)
             tools.check_memory(prod([size(h.channel_data.data) 8]));
             data=single(h.channel_data.data);
-            if ~(abs(w0)>eps)
-                data=single(reshape(hilbert(single(h.channel_data.data(:,:))),size(h.channel_data.data)));
+            if (abs(w0)<eps)
+                data=hilbert(data);
             end
             
             % create beamformed data class
@@ -189,7 +189,7 @@ classdef das < midprocess
             end
             
             % delay & sum
-            if any(data(:)>0) % only process if any data > 0
+            if any(data, 'all') % only process if any data > 0
                 
                 switch h.code
                     %% MEX
@@ -206,6 +206,19 @@ classdef das < midprocess
                     %% MEX CUDA                  
                     case code.mex_gpu
                         aux_data=mex.das_cuda(data,...
+                            sampling_frequency,...
+                            initial_time,...
+                            tx_apodization,...
+                            rx_apodization,...
+                            transmit_delay,...
+                            receive_delay,...
+                            modulation_frequency,...
+                            int32(h.dimension), ...
+                            int32(h.gpu_device));
+
+                    %% MEX CUDA
+                    case code.mex_gpu_tex2D
+                        aux_data=mex.das_cuda_tex2D(data,...
                             sampling_frequency,...
                             initial_time,...
                             tx_apodization,...
@@ -367,12 +380,7 @@ classdef das < midprocess
 
                     otherwise
                         error('Unknown code implementation requested');
-                end % end switch
-                
-                % assign phase according to 2 times the receive propagation distance
-                if ( abs(w0) > eps )
-                    aux_data=bsxfun(@times,aux_data,exp(-1i*w0*2*h.scan.reference_distance/h.channel_data.sound_speed));
-                end                
+                end % end switch            
             end % end if
             
             % copy data to object
