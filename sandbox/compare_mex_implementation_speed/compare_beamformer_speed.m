@@ -1,19 +1,13 @@
 %% CPWC simulation to compare speeds of the various USTB beamformers.
 %
 % In this example, we conduct a simple simulation to compare the speeds
-% achieved with USTB's:
+% achieved with USTB:
 %
+% # MEX C beamformer
 % # MEX CUDA beamformer
-% # MEX FAST CPU beamformer
 %
-% This tutorial assumes familiarity with the contents of the
-% <./CPWC_linear_array.html 'CPWC simulation with the USTB built-in Fresnel
-% simulator'> tutorial. Please feel free to refer back to that for more
-% details.
-%
-% Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
 % Stefano Fiorentini <stefano.fiorentini@ntnu.no>
-% Last edited: 24.11.2022
+% Last edited: 01/02/2023
 
 clear all
 close all
@@ -21,7 +15,7 @@ clc
 
 testCase = 0; % 0 = linear/planewave, 1 = sector/focused
 do_demodulation = true;
-nFrames = 1000;
+nFrames = 1:10:100;
 
 %% Phantom
 switch testCase
@@ -163,8 +157,8 @@ pipe.go({proc});
 
 dOp_per_frame = 2*scan.N_pixels*channel_data.N_channels*channel_data.N_waves;
 
-das_mex_time = zeros([length(nFrames), 1]);
-das_mex_gpu_time = zeros([length(nFrames), 1]);
+das_mex_c_time = zeros([length(nFrames), 1]);
+das_mex_cuda_time = zeros([length(nFrames), 1]);
 
 if isscalar(nFrames)
     profile on
@@ -175,24 +169,24 @@ for n=1:length(nFrames)
 
     channel_data.data=repmat(channel_data.data(:,:,:,1),[1, 1, 1, nFrames(n)]);
 
-    % Time USTB's MEX GPU tex 2D implementation
+    % Time USTB MEX CUDA implementation
     proc            = midprocess.das();
     proc.code       = code.mex_gpu;
     proc.gpu_id = 0;
     proc.dimension  = dimension.both;
     fprintf(1, 'Processing %d frames: MEX CUDA tex 2D\n', nFrames(n))
     tic()
-    bf_data_mex_gpu = pipe.go({proc});
-    das_mex_gpu_time(n) = toc();
+    bf_data_mex_cuda = pipe.go({proc});
+    das_mex_cuda_time(n) = toc();
 
-    % Time USTB's MEX FAST implementation
+    % Time USTB MEX C implementation
     proc            = midprocess.das();
     proc.code       = code.mex;
     proc.dimension  = dimension.both;
     fprintf(1, 'Processing %d frames: MEX FAST\n', nFrames(n))
     tic()
-    bf_data_mexFast_cpu = pipe.go({proc});
-    das_mex_time(n) = toc();
+    bf_data_mex_c = pipe.go({proc});
+    das_mex_c_time(n) = toc();
 end
 
 if isscalar(nFrames)
@@ -218,36 +212,38 @@ figure('Color', 'white')
 tiledlayout(1, 2, "TileSpacing", "compact", "Padding", "compact")
 hAx(1) = nexttile();
 surface(X*1e2, Y*1e2, Z*1e2, ...
-    20*log10(abs(reshape(bf_data_mex_gpu.data(:,end), dim)) / ...
-    max(abs(bf_data_mex_gpu.data(:,end)))), "LineStyle", "none")
+    20*log10(abs(reshape(bf_data_mex_cuda.data(:,end), dim)) / ...
+    max(abs(bf_data_mex_cuda.data(:,end)))), "LineStyle", "none")
 clim([-60, 0])
 view([0, 0])
-set(gca, "ZDir", "reverse")
+set(gca, "ZDir", "reverse", "Layer", "top")
 grid on
 box on
 axis equal tight
 xlabel("x [cm]")
 ylabel("z [cm]")
-title("mex CUDA tex 2D")
+title("mex CUDA")
+ylabel(colorbar, "dB")
 
 hAx(2) = nexttile();
 surface(X*1e2, Y*1e2, Z*1e2, ...
-    20*log10(abs(reshape(bf_data_mexFast_cpu.data(:,end), dim)) / ...
-    max(abs(bf_data_mexFast_cpu.data(:,end)))), "LineStyle", "none")
+    20*log10(abs(reshape(bf_data_mex_c.data(:,end), dim)) / ...
+    max(abs(bf_data_mex_c.data(:,end)))), "LineStyle", "none")
 clim([-60, 0])
 view([0, 0])
-set(gca, "ZDir", "reverse")
+set(gca, "ZDir", "reverse", "Layer", "top")
 grid on
 box on
 axis equal tight
 xlabel("x [cm]")
 ylabel("z [cm]")
-title("mex FAST")
+title("mex C")
+ylabel(colorbar, "dB")
 
 linkaxes(hAx)
 linkprop(hAx, {'CameraPosition','CameraUpVector'});
 
-diff = mean(abs(bf_data_mex_gpu.data(:,1) - bf_data_mexFast_cpu.data(:,1)), 1)
+diff = mean(abs(bf_data_mex_cuda.data(:,1) - bf_data_mex_c.data(:,1)), 1)
 
 %% Plot the runtimes
 figure('Color', 'white')
@@ -255,22 +251,22 @@ figure('Color', 'white')
 cMap = lines(2);
 
 hold on
-plot(nFrames(1:n)*dOp_per_frame/1e9,das_mex_gpu_time(1:n),'s-','linewidth',1.5,'color',cMap(1,:));
-plot(nFrames(1:n)*dOp_per_frame/1e9,das_mex_time(1:n),'o-','linewidth',1.5,'color',cMap(2,:));
+plot(nFrames(1:n)*dOp_per_frame/1e9,das_mex_cuda_time(1:n),'s-','linewidth',1.5,'color',cMap(1,:));
+plot(nFrames(1:n)*dOp_per_frame/1e9,das_mex_c_time(1:n),'o-','linewidth',1.5,'color',cMap(2,:));
 hold off
 
-for nn=1:length(nFrames)
-    text(nFrames(nn)*dOp_per_frame/1e9,das_mex_gpu_time(nn),sprintf('%0.2f s', das_mex_gpu_time(nn)), ...
+for n=1:length(nFrames)
+    text(nFrames(n)*dOp_per_frame/1e9,das_mex_cuda_time(n),sprintf('%0.2f s', das_mex_cuda_time(n)), ...
         'horizontalalignment', 'left', 'verticalalignment', 'top','color',cMap(1,:),'fontweight','bold');
 
-    text(nFrames(nn)*dOp_per_frame/1e9,das_mex_time(nn),sprintf('%0.2f s', das_mex_time(nn)), ...
+    text(nFrames(n)*dOp_per_frame/1e9,das_mex_c_time(n),sprintf('%0.2f s', das_mex_c_time(n)), ...
         'horizontalalignment', 'right', 'verticalalignment', 'bottom','color',cMap(2,:),'fontweight','bold');
 end
 
 grid on
 box on
 
-legend('MEX CUDA tex 2D', 'MEX FAST', 'Location','Best');
+legend('MEX CUDA', 'MEX C', 'Location','Best');
 xlabel('Delay operations [1e9]');
 ylabel('Elapsed time [s]');
 
