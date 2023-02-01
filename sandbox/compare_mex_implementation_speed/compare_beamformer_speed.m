@@ -13,11 +13,11 @@ clear all
 close all
 clc
 
-testCase = 0; % 0 = linear/planewave, 1 = sector/focused
+testCase = 1; % 0 = linear/planewave, 1 = sector/focused
 do_demodulation = true;
-nFrames = 1;
+nFrames = 60;
 
-codeToBenchmark = [1, 2, 3, 4]; % check enumeration("code") to see which ones
+codeToBenchmark = [2, 4]; % check enumeration("code") to see which ones
 
 [cid, cnames] = enumeration("code");
 
@@ -74,7 +74,7 @@ end
 
 switch testCase
     case 0
-        nTx=5;
+        nTx=15;
         angles=linspace(-10, 10, nTx)/180*pi;
         seq=uff.wave();
 
@@ -86,9 +86,9 @@ switch testCase
             seq(n).sound_speed=pha.sound_speed;
         end
     case 1
-        nTx=192; % n transmits
+        nTx=81; % n transmits
         F = 6.5e-2; % focus speed
-        angles=linspace(-40, 40, nTx)/180*pi;
+        angles=linspace(-35, 35, nTx)/180*pi;
         seq=uff.wave();
 
         for n=1:nTx
@@ -149,14 +149,14 @@ switch testCase
     case 1
         bmf.receive_apodization.window=uff.window.none;
         bmf.receive_apodization.f_number=3.5;
-        bmf.receive_apodization.maximum_aperture = 2e-2 * pipe.receive_apodization.f_number(1)^2;
+        bmf.receive_apodization.maximum_aperture = 2e-2 * bmf.receive_apodization.f_number(1)^2;
 
         bmf.transmit_apodization.window=uff.window.hamming;
         bmf.transmit_apodization.f_number=3.5;
-        bmf.transmit_apodization.minimum_aperture = 5e-3 * pipe.transmit_apodization.f_number(1)^2;
+        bmf.transmit_apodization.minimum_aperture = 4e-3 * bmf.transmit_apodization.f_number(1)^2;
 end
 
-bmf.code       = code.mex();
+bmf.code = code.mex();
 fprintf(1, 'Precalculating apodization\n')
 bmf.go();
 
