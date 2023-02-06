@@ -352,6 +352,16 @@ classdef apodization < uff
 
             % If we have a curvilinear array
             if isa(h.probe,'uff.curvilinear_array') || isa(h.probe,'uff.curvilinear_matrix_array')
+
+                % SF: element_azimuth is most likely necessary to account for
+                % the fact that the elements are tilted along the transducer
+                % curvature. If this quantity is precalculated and stored
+                % in the probe object, then we can probably merge all this
+                % receive apodization definition into a more general
+                % formulation, that does not contain if or switch clauses
+
+                % the probe class already includes the quantities theta and
+                % phi that define the element orientation
                 element_azimuth = atan2(x-h.origin.x, z-h.origin.z);
                 
                 pixel_azimuth = atan2(h.focus.x-h.origin.x, h.focus.z-h.origin.z);
