@@ -439,12 +439,16 @@ classdef apodization < uff
 
 
                     % Calculate distances
-                    x_dist=h.focus.x-h.sequence(n).source.x+h.sequence(n).origin.x;
-                    y_dist=h.focus.y-h.sequence(n).source.y+h.sequence(n).origin.y;
-                    z_dist=h.focus.z-h.sequence(n).source.z+h.sequence(n).origin.z;
+                    x_dist=h.focus.x-h.sequence(n).source.x;
+                    y_dist=h.focus.y-h.sequence(n).source.y;
+                    z_dist=h.focus.z-h.sequence(n).source.z;
 
-                    % apply beam & tilt
-                    [x_dist, y_dist, z_dist] = tools.rotate_points(x_dist, y_dist, z_dist, h.tilt(1), h.tilt(2));
+                    % Calculate source angle with respect to the aperture origin
+                    s0theta=atan2(h.sequence(n).source.x-h.sequence(n).origin.x, h.sequence(n).source.z-h.sequence(n).origin.z);
+                    s0phi=atan2(h.sequence(n).source.y-h.sequence(n).origin.y, h.sequence(n).source.z-h.sequence(n).origin.z);
+
+                    % Apply beam & tilt
+                    [x_dist, y_dist, z_dist] = tools.rotate_points(x_dist, y_dist, z_dist, h.tilt(1)+s0theta, h.tilt(2)+s0phi);
 
                     % minimum aperture
                     z_dist(z_dist>=0 & z_dist<h.minimum_aperture(1)/h.f_number(1)) = h.minimum_aperture(1)/h.f_number(1);
