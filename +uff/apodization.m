@@ -88,7 +88,7 @@ classdef apodization < uff
             end
         end
         function set.tilt(h,in_tilt)
-            validateattributes(in_tilt, {'single', 'double'}, {'vector', 'finite', 'positive'})
+            validateattributes(in_tilt, {'single', 'double'}, {'vector', 'finite'})
 
             if(isscalar(in_tilt))
                 h.tilt=[in_tilt, 0];

@@ -94,6 +94,7 @@ classdef beamformed_data < uff
                 h.figure_handle = parent_handle_in.Parent;
             else
                 h.figure_handle=figure();
+                parent_handle_in = h.figure_handle;
                 axis_handle = gca(h.figure_handle);
             end
             
