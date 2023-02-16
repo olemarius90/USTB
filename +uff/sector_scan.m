@@ -24,7 +24,7 @@ classdef sector_scan < uff.scan
     properties  (Access = public)
         azimuth_axis                % Vector containing the azimuth coordinates [rad]
         depth_axis                  % Vector containing the distance coordinates [m]
-        origin = uff.point()        % Vector of UFF.POINT objects
+        origin                      % Vector of UFF.POINT objects
     end
     
     properties  (Dependent)
@@ -44,6 +44,10 @@ classdef sector_scan < uff.scan
     methods (Access = public)
         function h=sector_scan(varargin)
             h = h@uff.scan(varargin{:});
+
+            if isempty(h.origin)
+                h.origin = uff.point();
+            end
         end
     end
     

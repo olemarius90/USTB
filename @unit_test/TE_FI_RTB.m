@@ -23,7 +23,7 @@ for n=1:channel_data.N_waves
     x_axis(n)=channel_data.sequence(n).source.x;
 
     % Fix to Issue #132 S.F. 16.02.2023
-    channel_data.sequence(n).origin.x = channel_data.sequence(n).source.x;
+    channel_data.sequence(n).origin = uff.point('xyz', [channel_data.sequence(n).source.x, 0, 0]);
     channel_data.sequence(n).wavefront = uff.wavefront.spherical;
 end
 z_axis=linspace(1e-3,62e-3,512*2).';

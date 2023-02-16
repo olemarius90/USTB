@@ -47,10 +47,10 @@ classdef wave < uff
     
     %% compulsory properties
     properties  (Access = public)
-        wavefront                           % WAVEFRONT enumeration class
-        source                              % POINT class
-        origin                              % POINT class
-        apodization                         % APODIZATION class
+        wavefront                       % WAVEFRONT enumeration class
+        source                          % POINT class
+        origin                          % POINT class
+        apodization                     % APODIZATION class
     end
     
     %% optional properties
@@ -72,12 +72,23 @@ classdef wave < uff
     %% constructor -> uff constructor
     methods (Access = public)
         function h=wave(varargin)
-            h = h@uff(varargin{:});
+            h = h@uff(varargin{:});  
 
-            h.wavefront = uff.wavefront.plane;
-            h.source = uff.point();
-            h.origin = uff.point();
-            h.apodization = uff.apodization();
+            if isempty(h.wavefront)
+                h.wavefront = uff.wavefront.plane;
+            end
+            
+            if isempty(h.source)
+                h.source = uff.point();
+            end
+
+            if isempty(h.origin)
+                h.origin = uff.point();
+            end
+
+            if isempty(h.apodization)
+                h.apodization = uff.apodization();
+            end
         end
     end
     
