@@ -88,8 +88,8 @@ for n=1:N
     seq(n).source.distance=depth;
     
     seq(n).apodization=uff.apodization();
-    seq(n).apodization.window=uff.window.none;
-    seq(n).apodization.f_number=1.7;
+    seq(n).apodization.window=uff.window.tukey50;
+    seq(n).apodization.f_number=1.5;
     seq(n).apodization.focus=uff.sector_scan('xyz',seq(n).source.xyz);
     
     seq(n).sound_speed=pha.sound_speed;
@@ -112,7 +112,7 @@ sim.phantom=pha;                % phantom
 sim.pulse=pul;                  % transmitted pulse
 sim.probe=prb;                  % probe
 sim.sequence=seq;               % beam sequence
-sim.sampling_frequency=41.6e6;  % sampling frequency [Hz]
+sim.sampling_frequency=50e6;  % sampling frequency [Hz]
 
 % we launch the simulation
 channel_data=sim.go();
@@ -140,11 +140,11 @@ mid.channel_data=channel_data;
 mid.scan=scan;
 
 mid.transmit_apodization.window = uff.window.hamming;
-mid.transmit_apodization.f_number=3.25;
+mid.transmit_apodization.f_number=3;
 mid.transmit_apodization.minimum_aperture = 2e-3;
 % mid.transmit_apodization.maximum_aperture = 15e-3;
 
-mid.receive_apodization.window=uff.window.tukey50;
+mid.receive_apodization.window=uff.window.tukey25;
 mid.receive_apodization.f_number=2;
 mid.receive_apodization.minimum_aperture = 1e-3;
 mid.receive_apodization.maximum_aperture = prb.N*prb.pitch;
