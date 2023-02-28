@@ -473,7 +473,7 @@ classdef apodization < uff
             box on
             axis equal tight
             ylabel(colorbar(), 'Apodization value')
-            clim([0, 1])
+            caxis([0, 1])
             if isreceive
                 title(sprintf('Apodization values for element %d',n));
             else
