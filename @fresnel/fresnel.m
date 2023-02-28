@@ -83,7 +83,7 @@ classdef fresnel < handle
             % computing geometry relations to the point
             distance  = sqrt((h.phantom.x.'-h.probe.x).^2+(h.phantom.y.'-h.probe.y).^2+(h.phantom.z.'-h.probe.z).^2);
             theta = atan2(h.phantom.x.'-h.probe.x, h.phantom.z.'-h.probe.z)-h.probe.theta;
-            phi = asin((h.phantom.y.'-h.probe.y)./distance)-h.probe.phi;
+            phi = atan2(h.phantom.y.'-h.probe.y, h.phantom.z.'-h.probe.z)-h.probe.phi;
             
             % directivity between probe and the point
             directivity = sinc(k0*h.probe.width/2/pi.*tan(theta)).*sinc(k0*h.probe.height/2/pi.*tan(phi)./cos(theta));
@@ -94,8 +94,8 @@ classdef fresnel < handle
             % attenuation (absorption & geometrical dispersion)
             attenuation = permute(10.^(-h.phantom.alpha*(distance*1e2)*(f0*1e-6)).*directivity.*delta0./(4*pi*distance), [3,1,2]);
             
-            min_range = min(distance(:));
-            max_range = max(distance(:));
+            min_range = min(distance, [], 'all');
+            max_range = max(distance, [], 'all');
             min_delay = min([h.sequence(:).delay_values], [], 'all');
             max_delay = max([h.sequence(:).delay_values], [], 'all');
             
