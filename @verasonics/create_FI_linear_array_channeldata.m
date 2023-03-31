@@ -55,7 +55,9 @@ for n_frame = h.frame_order
         channel_data.sequence(n_tx).delay = -(offset_distance+t0_comp_in_m)/channel_data.sound_speed;
         % read data
         data(:,:,n_tx,frame_idx) = h.RcvData{1}(h.Receive(n).startSample:h.Receive(n).endSample,h.Trans.Connector,n_frame);
-        
+        %save transmit apodization used
+        channel_data.sequence(n_tx).apodization_values = h.TX(n_tx).Apod;
+
         if plot_delayed_signal
             if n_tx == length(channel_data.sequence)/2 %if this is the center scan line
                 x = channel_data.sequence(n_tx).source.x;
