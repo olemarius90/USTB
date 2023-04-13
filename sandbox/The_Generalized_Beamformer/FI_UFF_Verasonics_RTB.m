@@ -39,12 +39,14 @@ content = uff.index([data_path filesep filename],'/',display);
 % channel_data. So let's read that.
 
 channel_data=uff.read_object([data_path filesep filename],'/channel_data');
-%%
+% %%
 D = abs(min(channel_data.probe.x)-max(channel_data.probe.x));
 step = D/channel_data.N_waves;
-% for w = 1:channel_data.N_waves
-%     channel_data.sequence(w).origin.x = step.*w 
-% end
+first_origin = -channel_data.N_waves/2 * step
+for w = 1:channel_data.N_waves
+    first_origin + step.*w 
+    channel_data.sequence(w).origin.x = channel_data.sequence(w).source.x;%first_origin + step.*w;
+end
 
 %%  
 %
