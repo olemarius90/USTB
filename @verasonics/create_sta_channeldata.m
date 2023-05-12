@@ -16,8 +16,10 @@ for n=1:N
     seq(n)=uff.wave();
     seq(n).probe=channel_data.probe;
     seq(n).source.xyz=[channel_data.probe.x(n) channel_data.probe.y(n) channel_data.probe.z(n)];
-
     seq(n).sound_speed=channel_data.sound_speed;
+    seq(n).apodization.apodization_vector = h.TX(n).Apod;
+    seq(n).origin.xyz = mean(channel_data.probe.geometry(h.TX(n).Apod,1:3),1);
+    %seq(n).origin.xyz = channel_data.probe.geometry(n,1:3);
 end
 channel_data.sequence = seq;
 

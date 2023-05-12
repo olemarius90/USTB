@@ -18,6 +18,8 @@ for n=1:N
     source = [h.TX(n).focus*h.lambda*sin(h.angles(n)) 0 h.TX(n).focus*h.lambda*cos(h.angles(n))]; 
     seq(n).source.xyz = source;
     seq(n).sound_speed=channel_data.sound_speed;
+    seq(n).apodization.apodization_vector = h.TX(n).Apod;
+    seq(n).origin.xyz = mean(channel_data.probe.geometry(h.TX(n).Apod,1:3),1);
 end
 channel_data.sequence = seq;
 
