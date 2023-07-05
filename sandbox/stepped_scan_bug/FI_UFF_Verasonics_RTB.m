@@ -27,9 +27,9 @@ channel_data_corrected=uff.read_object([data_path filesep filename],'/channel_da
 %% channel_data_corrected = copy(channel_data);
 %% Set the origin in the channel data sequence to the focal point. Should
 %this be default when storing the data in the Verasonics class?
-for w = 1:channel_data.N_waves
-    channel_data_corrected.sequence(w).origin.x = channel_data.sequence(w).source.x;
-end
+% for w = 1:channel_data.N_waves
+%     channel_data_corrected.sequence(w).origin.x = channel_data.sequence(w).source.x;
+% end
 
 %% Define Scan
 MLA = 4;
@@ -57,11 +57,11 @@ mid_RTB.receive_apodization.f_number=1.7;
 b_data_RTB=mid_RTB.go();
 b_data_RTB.plot([])
 b_data_RTB.frame_rate = 20;
-b_data_RTB.save_as_gif("example_transmit_apod_error.gif")
+%b_data_RTB.save_as_gif("example_transmit_apod_error.gif")
 
 %%
 mid_RTB.channel_data=channel_data_corrected;
 b_data_RTB_corrected=mid_RTB.go();
 b_data_RTB_corrected.plot([])
 b_data_RTB_corrected.frame_rate = 20;
-b_data_RTB_corrected.save_as_gif("example_transmit_apod_corrected.gif")
+%b_data_RTB_corrected.save_as_gif("example_transmit_apod_corrected.gif")
