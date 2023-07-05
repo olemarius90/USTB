@@ -62,15 +62,15 @@ Please use the issue tracker to report bugs and make suggestions: https://bitbuc
 
 The project administrators are:
 
-* Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>,
 * Ole Marius Hoel Rindal <omrindal@ifi.uio.no>,
-* Stefano Fiorentini <stefano.fiorentini@ntnu.no>.
- 
+* Stefano Fiorentini <stefano.fiorentini@ntnu.no>,
+* Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
 
 Collaborators:
 
 * Anders Emil Vrålstad
 * Håvard Kjellmo Arnestad
+* Magnus Dalen Kvalevåg
 * Olivier Bernard
 * Andreas Austeng 
 * Arun Nair
@@ -80,4 +80,3 @@ Collaborators:
 * Hervé Liebgott 
 * Øyvind Krøvel-Velle Standal 
 * Jochen Rau 
-* Stefano Fiorentini
