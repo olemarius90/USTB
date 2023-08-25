@@ -22,8 +22,7 @@ NB! If you have trouble downloading the data using the download tool you can dow
 Delete the corrupt file with the same filename and move the downloaded data to the "data/" folder in the USTB repository and rerun the example. 
 
 ## Exercise 2 : Introduction to MATLAB
-The second exercise can be found in the document IN3015_IN4015_MATLAB_intro.pdf in this folder, and is a brief introuction to MATLAB and also pointing to relevant resoureces to 
-learn MATLAB. You need to answer each task with the given hints by running the code in the MATLAB_intro.m file.
+In the second exercise you will be exposed to some MATLAB concepts that are relevant for the course. You need to answer each task found in the "MATLAB_intro.m" file. If you are new to MATLAB you may want to read "IN3015_IN4015_MATLAB_intro.pdf".
 
 ## Additional USTB exercise:
 NB! You don't need add anything to the report from this exercise.
