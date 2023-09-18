@@ -138,7 +138,7 @@ alpha=linspace(-alpha_max,alpha_max,Na);    % vector of angles [rad]
 disp('Field II: Computing FI dataset');
 cropat=round(1.1*2*sqrt((max(phantom_positions(:,1))-min(probe.x))^2+max(phantom_positions(:,3))^2)/c0/dt);   % maximum time sample, samples after this will be dumped
 %STA=zeros(cropat,probe.N_x*probe.N_y,N_transmit);
-for n=1:N_transmit%probe.N_elements
+parfor n=1:N_transmit%probe.N_elements
     %% output data
        t_out=0:dt:((cropat-1)*dt);                 % output time vector
     STA=zeros(cropat,probe.N_x*probe.N_y);    % impulse response channel data
