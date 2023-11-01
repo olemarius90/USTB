@@ -229,32 +229,45 @@ classdef apodization < uff
             
             % NONE APODIZATION
             if(h.window==uff.window.none)
-                h.data_backup=ones(h.focus.N_pixels,N_waves);
+                h.data_backup=ones([h.focus.N_pixels,N_waves]);
                 
             % SCALINE APODIZATION (MLA scanlines per wave)
             elseif (h.window==uff.window.scanline)
                 
                 % linear scan
                 if isa(h.focus,'uff.linear_scan')
-                    assert(N_waves==h.focus.N_x_axis/h.MLA, 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
-                    ACell=repmat({ones(h.MLA,1)},[1,h.focus.N_x_axis/h.MLA]);
-                    if (h.MLA_overlap>0)
-                        ABlock=filtfilt(ones(1,h.MLA_overlap+1)/(h.MLA_overlap+1),1,blkdiag(ACell{:}));
-                    else
-                        ABlock=blkdiag(ACell{:});
+                    assert(N_waves==h.focus.N_x_axis*h.focus.N_y_axis/prod(h.MLA), 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
+                    
+                    B = zeros([N_waves, h.focus.N_x_axis, h.focus.N_y_axis]);
+                    A = cat(3, cat(2, ones([1, h.MLA]), zeros([1,h.focus.N_x_axis-h.MLA(1), h.MLA(2)])), ...
+                        zeros([1,h.focus.N_x_axis, h.focus.N_y_axis-h.MLA(2)]));
+
+                    for i = 1:h.focus.N_x_axis/h.MLA(1)
+                        for j = 1:h.focus.N_y_axis/h.MLA(2)
+                            B(i+(j-1)*h.focus.N_x_axis/h.MLA(1), :, :) = filter2(ones(h.MLA_overlap+1)/prod(h.MLA_overlap+1), ...
+                                circshift(A, [0, (i-1)*h.MLA(1), (j-1)*h.MLA(2)]), 'valid');
+                        end
                     end
-                    h.data_backup=kron(ABlock,ones(h.focus.N_z_axis,1));
+
+                    h.data_backup=reshape(permute(B.*ones([1, 1, 1, h.focus.N_z_axis]), [4,2,3,1]), [h.focus.N_pixels, N_waves]);
                     
                 % sector scan
                 elseif isa(h.focus,'uff.sector_scan')
-                    assert(N_waves==h.focus.N_azimuth_axis/h.MLA,'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
-                    ACell=repmat({ones(h.MLA,1)},[1,h.focus.N_azimuth_axis/h.MLA]);
-                    if (h.MLA_overlap>0)                    
-                        ABlock=filtfilt(ones([1,h.MLA_overlap+1])/(h.MLA_overlap+1),1,blkdiag(ACell{:}));
-                    else
-                        ABlock=blkdiag(ACell{:});
+                     assert(N_waves==h.focus.N_azimuth_axis*h.focus.N_elevation_axis/prod(h.MLA), 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
+                    
+                    B = zeros([N_waves, h.focus.N_azimuth_axis, h.focus.N_elevation_axis]);
+                    A = cat(3, cat(2, ones([1, h.MLA]), zeros([1,h.focus.N_azimuth_axis-h.MLA(1), h.MLA(2)])), ...
+                        zeros([1,h.focus.N_azimuth_axis, h.focus.N_elevation_axis-h.MLA(2)]));
+
+                    for i = 1:h.focus.N_azimuth_axis/h.MLA(1)
+                        for j = 1:h.focus.N_elevation_axis/h.MLA(2)
+                            B(i+(j-1)*h.focus.N_x_axis/h.MLA(1), :, :) = filter2(ones(h.MLA_overlap+1)/prod(h.MLA_overlap+1), ...
+                                circshift(A, [0, (i-1)*h.MLA(1), (j-1)*h.MLA(2)]), 'valid');
+                        end
                     end
-                    h.data_backup=kron(ABlock,ones(h.focus.N_depth_axis,1));
+
+                    h.data_backup=reshape(permute(B.*ones([1, 1, 1, h.focus.N_depth_axis]), [4,2,3,1]), [h.focus.N_pixels, N_waves]);
+
                 else
                     error('uff.apodization:Scanline','The scan class does not support scanline based beamforming. This must be done manually, defining several scan and setting the apodization to uff.window.none.');
                 end
@@ -375,7 +388,7 @@ classdef apodization < uff
                 z_dist = pixel_distance .* ones([1, h.probe.N_elements]);
                     
             % If not, then we have a flat probe and a linear scan. In this
-            % case the aperture is centered at each beam's x coordinate
+            % case the aperture is centered at each beam's [x, y] coordinate
             else
                 if isempty(h.origin)
                     x_dist = h.focus.x - x;
@@ -486,22 +499,19 @@ classdef apodization < uff
             
             switch class(h.focus)
                 case 'uff.linear_scan'
-                    dim = [h.focus.N_z_axis, h.focus.N_x_axis];
+                    dim = [h.focus.N_z_axis, h.focus.N_x_axis, h.focus.N_y_axis];
                 case 'uff.sector_scan'
-                    dim = [h.focus.N_depth_axis, h.focus.N_azimuth_axis];
+                    dim = [h.focus.N_depth_axis, h.focus.N_azimuth_axis, h.focus.N_elevation_axis];
                 otherwise
                     error('Plotting apodization is only supported for linear and sector scans')
             end
-            
-            X = reshape(h.focus.x, dim);
-            Y = reshape(h.focus.y, dim);
-            Z = reshape(h.focus.z, dim);
-
+          
             data = h.data; %#ok<*PROPLC>
 
             subplot(1,2,1);
-            surface(X*1e3,Z*1e3,reshape(data(:,n), dim),'Linestyle','none')
+            scatter3(h.focus.x*1e3,h.focus.y*1e3,h.focus.z*1e3,12,h.data(:,n),'Marker','.')
             xlabel('x [mm]');
+            ylabel('y [mm]');
             ylabel('z [mm]');
             set(gca,'Ydir','reverse');
             grid on

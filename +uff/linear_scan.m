@@ -20,9 +20,9 @@ classdef linear_scan < uff.scan
     %   Date: 2023/10/27
 
     properties  (Access = public)
-        x_axis           % Vector containing the x coordinates of the x - axis [m]
-        y_axis           % Vector containing the x coordinates of the x - axis [m]
-        z_axis           % Vector containing the z coordinates of the z - axis [m]
+        x_axis = 0       % Vector containing the x coordinates of the x - axis [m]
+        y_axis = 0       % Vector containing the x coordinates of the x - axis [m]
+        z_axis = 0       % Vector containing the z coordinates of the z - axis [m]
         transform        % Vector of uff.transform objects
     end
     
@@ -40,18 +40,6 @@ classdef linear_scan < uff.scan
     methods (Access = public)
         function h=linear_scan(varargin)
             h = h@uff.scan(varargin{:});
-
-            if isempty(h.x_axis)
-                h.x_axis = 0;
-            end
-
-            if isempty(h.y_axis)
-                h.y_axis = 0;
-            end
-
-            if isempty(h.z_axis)
-                h.z_axis = 0;
-            end
 
             if isempty(h.transform)
                 h.transform = uff.transform();
@@ -102,7 +90,7 @@ classdef linear_scan < uff.scan
             h.update_pixel_position();
         end
         function set.transform(h,in_transform)
-            validateattributes(in_transform {'uff.transform'}, {'vector'})
+            validateattributes(in_transform, {'uff.transform'}, {'vector'})
             h.transform=in_transform(:);
             h.update_pixel_position();
         end

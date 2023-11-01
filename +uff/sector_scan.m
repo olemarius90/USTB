@@ -24,9 +24,9 @@ classdef sector_scan < uff.scan
     %   Date: 2023/10/27
 
     properties  (Access = public)
-        azimuth_axis                % Vector containing the azimuth coordinates [rad]
-        elevation_axis              % Vector containing the elevation coordinates [rad]
-        depth_axis                  % Vector containing the distance coordinates [m]
+        azimuth_axis = 0            % Vector containing the azimuth coordinates [rad]
+        elevation_axis = 0          % Vector containing the elevation coordinates [rad]
+        depth_axis = 0              % Vector containing the distance coordinates [m]
         transform                   % Vector of uff.transform objects
         origin                      % Vector of uff.point objects
     end
@@ -50,18 +50,6 @@ classdef sector_scan < uff.scan
     methods (Access = public)
         function h=sector_scan(varargin)
             h = h@uff.scan(varargin{:});
-
-            if isempty(h.azimuth_axis)
-                h.azimuth_axis = 0;
-            end
-
-            if isempty(h.elevation_axis)
-                h.elevation_axis = 0;
-            end
-
-            if isempty(h.depth_axis)
-                h.depth_axis = 0;
-            end
 
             if isempty(h.transform)
                 h.transform = uff.transform();
