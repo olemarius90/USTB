@@ -383,7 +383,7 @@ classdef apodization < uff
 
                 pixel_distance = sqrt((h.focus.x-x0(:)).^2+(h.focus.y-y0(:)).^2+(h.focus.z-z0(:)).^2);
                 
-                x_dist=  x - x0(:);
+                x_dist = x - x0(:);
                 y_dist = y - y0(:);
                 z_dist = pixel_distance .* ones([1, h.probe.N_elements]);
                     
@@ -483,16 +483,16 @@ classdef apodization < uff
     %% display methods
     methods
         
-        function figure_handle=plot(h,figure_handle_in,n)
+        function figure_handle = plot(h, figure_handle_in, n_element)
             % PLOT Plot apodization
             if nargin>1 && ~(isempty(figure_handle_in))
-                figure_handle=figure(figure_handle_in);
+                figure_handle = figure(figure_handle_in);
             else
-                figure_handle=figure();
+                figure_handle = figure();
             end
             
             if nargin <3
-                n=round(size(h.data,2)/2);
+                n_element = ceil(size(h.data,2)/2);
             end
                         
             isreceive = isempty(h.sequence);
@@ -510,74 +510,92 @@ classdef apodization < uff
             Y = reshape(h.focus.y, dim);
             Z = reshape(h.focus.z, dim);
 
+            x0 = ceil(dim/2);
+
             figure_handle.UserData.CData = reshape(h.data, [dim, size(h.data, 2)]);
             figure_handle.UserData.dim = dim;
-            figure_handle.UserData.n = n;
+            figure_handle.UserData.n_element = n_element;
+            figure_handle.UserData.xyz.x = X;
+            figure_handle.UserData.xyz.y = Y;
+            figure_handle.UserData.xyz.z = Z;
 
-            if dim(2) == 1 || dim(3) == 1
-                iptPointerManager(figure_handle);
+            iptPointerManager(figure_handle);
 
-                pb.exitFcn = @(fig,currentPoint) set(fig, 'Pointer','arrow');
-                pb.enterFcn = @(fig,currentPoint) set(fig, 'Pointer','crosshair');
-                pb.traverseFcn = [];
+            pointerBehaviour.exitFcn = @(fig,currentPoint) set(fig, 'Pointer','arrow');
+            pointerBehaviour.enterFcn = @(fig,currentPoint) set(fig, 'Pointer','crosshair');
+            pointerBehaviour.traverseFcn = [];
 
-                % Plot 1
-                axH(1) = subplot(1,2,1);
+            tiledlayout(1,2,'TileSpacing','compact','Padding','compact')
 
-                % Add navigation buttons
-                tb = axtoolbar('default');
-                axtoolbarbtn(tb, 'push', 'Icon', ...
-                    fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Forward_16.png'), ...
-                    'Tooltip', 'Next','ButtonPushedFcn', @nextItem);
-                axtoolbarbtn(tb, 'push', 'Icon', ...
-                    fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Back_16.png'), ...
-                    'Tooltip', 'Previous','ButtonPushedFcn', @previousItem);
-            
-                imH(1) = surface(squeeze(X)*1e3,squeeze(Y)*1e3,squeeze(Z)*1e3, ...
-                    squeeze(figure_handle.UserData.CData(:,:,:,figure_handle.UserData.n)), ...
-                    'LineStyle', 'none', 'Tag', 'plot1', 'ButtonDownFcn', @updateFcn);
-                iptSetPointerBehavior(imH(1),pb);
-                
-                xlabel('x [mm]')
-                ylabel('y [mm]')
-                zlabel('z [mm]')
-                grid on
-                box on
-                axis equal tight
-                ylabel(colorbar(), 'Apodization weight')
-                set(gca, 'ZDir', 'reverse')
-                clim([0, 1])
-                view(3)
-                if isreceive
-                    axH(1).UserData.title = 'Apodization values for element %d';
-                else
-                    axH(1).UserData.title = 'Apodization values for wave %d';
-                end
-                title(axH(1), sprintf(axH(1).UserData.title, n))
+            % Tile 1 - 3-D rendering of the apodization matrix for a
+            % specific element
+            ax(1) = nexttile();
 
+            % Add navigation buttons
+            tb = axtoolbar('default');
+            axtoolbarbtn(tb, 'push', 'Icon', ...
+                fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Forward_16.png'), ...
+                'Tooltip', 'Next','ButtonPushedFcn', @nextElementFcn);
+            axtoolbarbtn(tb, 'push', 'Icon', ...
+                fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Back_16.png'), ...
+                'Tooltip', 'Previous','ButtonPushedFcn', @previousElementFcn);
 
-                % Plot 2
-                axH(2) = subplot(1,2,2);
-                plot(squeeze(figure_handle.UserData.CData(1,1,1,:)), 'Tag', 'plot2');
-                grid on
-                axis tight
-                ylim([0, 1])
-                if isreceive
-                    axH(2).UserData.title = 'Receive apodization at pixel [%0.2f,%0.2f,%0.2f] mm';
-                    xlabel('Element')
-                else
-                    axH(2).UserData.title = 'Transmit apodization at pixel [%0.2f,%0.2f,%0.2f] mm';
-                    xlabel('wave')
-                end
-                ylabel('Apodization weight')
-
-                title(axH(2), sprintf(axH(2).UserData.title,X(1),Y(1),Z(1)))
-            else
-
-
-
-
+            if dim(2) > 1
+                surface(squeeze(X(:,:,x0(3)))*1e3,squeeze(Y(:,:,x0(3)))*1e3,squeeze(Z(:,:,x0(3)))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(:,:,x0(3),figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.zx', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'zx', 'y', x0(3)))
             end
+
+            if dim(3) > 1
+                surface(squeeze(X(:,x0(2),:))*1e3,squeeze(Y(:,x0(2),:))*1e3,squeeze(Z(:,x0(2),:))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(:,x0(2),:,figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.zy', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'zy', 'x', x0(2)))
+            end
+
+            if dim(2) > 1 && dim(3) > 1
+                  surface(squeeze(X(x0(1),:,:))*1e3,squeeze(Y(x0(1),:,:))*1e3,squeeze(Z(x0(1),:,:))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(x0(1),:,:,figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.xy', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'xy', 'z', x0(1)))
+            end
+
+            xlabel('x [mm]')
+            ylabel('y [mm]')
+            zlabel('z [mm]')
+            grid on
+            box on
+            axis equal tight
+            ylabel(colorbar(), 'Apodization')
+            set(gca, 'ZDir', 'reverse')
+            clim([0, 1])
+            view(3)
+            if isreceive
+                ax(1).UserData.title = 'Receive apodization rendering for element %d';
+            else
+                ax(1).UserData.title = 'Transmit apodization rendering for wave %d';
+            end
+            title(ax(1), sprintf(ax(1).UserData.title, n_element))
+
+
+            % Tile 2 - Plot for all apodization values at a specific pixel
+            ax(2) = nexttile();
+            plot(squeeze(figure_handle.UserData.CData(1,1,1,:)), 'Tag', 'apod.e');
+            grid on
+            axis tight
+            ylim([0, 1])
+            if isreceive
+                ax(2).UserData.title = 'Receive apodization at pixel [%0.2f, %0.2f, %0.2f] mm';
+                xlabel('Element')
+            else
+                ax(2).UserData.title = 'Transmit apodization at pixel [%0.2f, %0.2f, %0.2f] mm';
+                xlabel('wave')
+            end
+            ylabel('Apodization weight')
+
+            title(ax(2), sprintf(ax(2).UserData.title,X(1),Y(1),Z(1)))
+
 
         end
     end
@@ -587,40 +605,57 @@ function updateFcn(obj, eventObj)
 fig = ancestor(obj, 'figure');
 xyz = eventObj.IntersectionPoint;
 
-plotHandle = findobj('Tag', 'plot2');
+gHandle = findobj(fig, 'Tag', 'apod.e');
 
 [~, I] = min(sqrt(sum((xyz-[obj.XData(:), obj.YData(:), obj.ZData(:)]).^2, 2)), [], 1);
 [i, j, k] = ind2sub(fig.UserData.dim,I);
 
-plotHandle.YData = squeeze(fig.UserData.CData(i,j,k,:));
-title(plotHandle.Parent, sprintf(plotHandle.Parent.UserData.title, xyz(1), xyz(2), xyz(3)))
+gHandle.YData = squeeze(fig.UserData.CData(i,j,k,:));
+title(gHandle.Parent, sprintf(gHandle.Parent.UserData.title, xyz(1), xyz(2), xyz(3)))
 end
 
-function previousItem(obj, ~)
+function previousElementFcn(obj, ~)
 fig = ancestor(obj, 'figure');
 
-if fig.UserData.n == 1
+if fig.UserData.n_element == 1
     return
 else
-    fig.UserData.n = fig.UserData.n - 1;
-    plotHandle = findobj('Tag', 'plot1'); 
+    fig.UserData.n_element = fig.UserData.n_element - 1;
+    gHandle = findobj(fig, '-regexp', 'Tag', 'apod.[xyz]');
 
-    plotHandle.CData = squeeze(fig.UserData.CData(:,:,:, fig.UserData.n));
-    title(plotHandle.Parent, sprintf(plotHandle.Parent.UserData.title, fig.UserData.n))
+    for n = 1:length(gHandle)
+        switch gHandle(n).UserData.dim
+            case 'zx'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,:,gHandle(n).UserData.y,fig.UserData.n_element));
+            case 'zy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,gHandle(n).UserData.x,:,fig.UserData.n_element));
+            case 'xy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(gHandle(n).UserData.z,:,:,fig.UserData.n_element));
+        end
+    end
+    title(gHandle(1).Parent, sprintf(gHandle(1).Parent.UserData.title, fig.UserData.n_element))
+end
 end
 
-end
-
-function nextItem(obj, ~)
+function nextElementFcn(obj, ~)
 fig = ancestor(obj, 'figure');
 
-if fig.UserData.n == size(fig.UserData.CData, 4)
+if fig.UserData.n_element == size(fig.UserData.CData, 4)
     return
 else
-    fig.UserData.n = fig.UserData.n + 1;
-    plotHandle = findobj('Tag', 'plot1'); 
+    fig.UserData.n_element = fig.UserData.n_element + 1;
+    gHandle = findobj(fig, '-regexp', 'Tag', 'apod.[xyz]');
 
-    plotHandle.CData = squeeze(fig.UserData.CData(:,:,:,fig.UserData.n));
-    title(plotHandle.Parent, sprintf(plotHandle.Parent.UserData.title, fig.UserData.n))
+    for n = 1:length(gHandle)
+        switch gHandle(n).UserData.dim
+            case 'zx'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,:,gHandle(n).UserData.y,fig.UserData.n_element));
+            case 'zy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,gHandle(n).UserData.x,:,fig.UserData.n_element));
+            case 'xy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(gHandle(n).UserData.z,:,:,fig.UserData.n_element));
+        end
+    end
+    title(gHandle(1).Parent, sprintf(gHandle(1).Parent.UserData.title, fig.UserData.n_element))
 end
 end
