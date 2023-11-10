@@ -16,4 +16,4 @@ Please provide a written report that
 - all plots needed for supporting your arguments when answering the exercise parts
 
 The report should be uploaded to [devilry.ifi.uio.no](devilry.ifi.uio.no).  
-**Deadline for uploading: Tuesday 1. November at 10:00. **
+**Deadline for uploading: Wednesday 22. November at 10:00. **
