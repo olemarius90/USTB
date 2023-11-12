@@ -103,10 +103,18 @@ fprintf('USTB DAS beamformer completed in %.2f seconds.\n', DAS_time)
 %% Plot both images in same plot
 % Plot both in same plot with connected axes, try to zoom!
 f3 = figure;clf
-b_data_dmas.plot(subplot(3,1,1),'DMAS'); % Display image
+b_data_dmas.plot(subplot(1,3,1),'DMAS'); % Display image
 ax(1) = gca;
-b_data_s_dmas.plot(subplot(3,1,2),'s-DMAS'); % Display image
+b_data_s_dmas.plot(subplot(1,3,2),'s-DMAS'); % Display image
 ax(2) = gca;
-b_data_das.plot(subplot(3,1,3),'DAS'); % Display image
+b_data_das.plot(subplot(1,3,3),'DAS'); % Display image
 ax(3) = gca;
 linkaxes(ax);
+
+%% Plot in same beamformed data for comparison
+b_data_compare = uff.beamformed_data(b_data_das)
+b_data_compare.data(:,1,1,1) = b_data_dmas.data./max(b_data_dmas.data);
+b_data_compare.data(:,1,1,2) = b_data_s_dmas.data./max(b_data_s_dmas.data);
+b_data_compare.data(:,1,1,3) = b_data_das.data./max(b_data_das.data);
+b_data_compare.plot([],['1 = DMAS, 2 = Simplified DMAS, 3 = DAS'])
+
