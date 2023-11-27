@@ -1,9 +1,9 @@
 # Module 7 - Imaging Artifacts
-% This exercise is to explore the effects of using the wrong sound speed
-% in the reconstruction. As we learned in the lecture, the sound speed in
-% the body varies quite a lot, from e.g. 1460 in fat to 1600 in muscles. In this
-% exercise we will experiment with the sound speed in the reconstruction of
-% a single PW image and see how this affects the reconstructed image. 
+This exercise is to explore the effects of using the wrong sound speed
+in the reconstruction. As we learned in the lecture, the sound speed in
+the body varies quite a lot, from e.g. 1460 in fat to 1600 in muscles. In this
+exercise we will experiment with the sound speed in the reconstruction of
+a single PW image and see how this affects the reconstructed image. 
 
 ## Litterature:
 See lecture slides.
@@ -53,6 +53,7 @@ pixel". How can you set the z_axis of the reconstructed scan so that it
 scales with the sound speed? 
 Hint: Perhaps you can use the wavelength as a unit? It is found at
 channel_data.lambda or you can calculate it on your own.
+Explain why this works.
        
 ### Part III
 Based on the two previous exercises - which sound speed was correct when
