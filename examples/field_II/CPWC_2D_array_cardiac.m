@@ -25,8 +25,8 @@ scat_density = 0.1;
 kerf = lambda/5;
 
 probe = uff.matrix_array();
-probe.pitch_x = lambda/2;
-probe.pitch_y = lambda/2;
+probe.pitch_x = lambda*0.8;
+probe.pitch_y = lambda*0.8;
 probe.element_width = probe.pitch_x-kerf;
 probe.element_height = probe.pitch_y-kerf;
 probe.N_x = 40;
@@ -35,8 +35,8 @@ probe.N_y = 32;
 %% Transmit definition
 f = 30e-2; % focus set at 30 centimeters
 
-theta = linspace(-15, 15, 9) * pi / 180; % azimuth tx angles
-phi = linspace(-15, 15, 9) * pi / 180;  % elevation tx angles
+theta = linspace(-15, 15, 7) * pi / 180; % azimuth tx angles
+phi = linspace(-15, 15, 7) * pi / 180;  % elevation tx angles
 
 [PH, TH] = ndgrid(phi, theta);
 
@@ -138,23 +138,23 @@ xdc_times_focus(Rh, 0, zeros([1, probe.N_elements]))
 h = waitbar(0, 'Simulating channel data...');
 
 try
-for n = 1:N_waves
-    waitbar(n/N_waves, h, sprintf('Simulating channel data...Tx %d of %d', n, N_waves))
-    
-    % === Set transmit focus ===
-    xdc_focus(Th, 0, tx(n,:))
+    for n = 1:N_waves
+        waitbar(n/N_waves, h, sprintf('Simulating channel data...Tx %d of %d', n, N_waves))
 
-    % Generate channel data
-    [scat, start_time] = calc_scat_multi(Th, Rh, positions, amplitudes);
+        % === Set transmit focus ===
+        xdc_focus(Th, 0, tx(n,:))
 
-    ti = start_time + (0:length(scat)-1)/fs - lag/fs;
+        % Generate channel data
+        [scat, start_time] = calc_scat_multi(Th, Rh, positions, amplitudes);
 
-    % Interpolation
-    tmp = interp1(ti, scat, to, 'linear', 0);
-        
-    % === Downsampling ===
-    ch(:,:,n) = tmp(1:downfact:end,:);
-end
+        ti = start_time + (0:length(scat)-1)/fs - lag/fs;
+
+        % Interpolation
+        tmp = interp1(ti, scat, to, 'linear', 0);
+
+        % === Downsampling ===
+        ch(:,:,n) = tmp(1:downfact:end,:);
+    end
 catch ME
     close(h)
     xdc_free(Th)
@@ -231,11 +231,11 @@ mid.dimension = dimension.both();
 mid.scan = xzScan;
 mid.spherical_transmit_delay_model = spherical_transmit_delay_model.spherical;
 mid.receive_apodization.window = uff.window.hamming;
-mid.receive_apodization.maximum_aperture = [probe.N_x, probe.N_y] .* [probe.pitch_x, probe.pitch_y];
-mid.receive_apodization.f_number = 3;
+mid.receive_apodization.maximum_aperture = 1.5*[probe.N_x, probe.N_y] .* [probe.pitch_x, probe.pitch_y];
+mid.receive_apodization.f_number = 3.5;
 mid.transmit_apodization.window = uff.window.hamming;
-mid.transmit_apodization.maximum_aperture = 2.5*lambda*6e-2./([probe.N_x, probe.N_y] .* [probe.pitch_x, probe.pitch_y]);
-mid.transmit_apodization.f_number = 1;
+mid.transmit_apodization.maximum_aperture = ([probe.N_x, probe.N_y] .* [probe.pitch_x, probe.pitch_y]);
+mid.transmit_apodization.f_number = 30e-2 ./ mid.transmit_apodization.maximum_aperture;
 
 bf_iq_xz = mid.go();
 
