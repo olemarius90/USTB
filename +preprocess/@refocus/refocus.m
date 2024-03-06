@@ -6,7 +6,7 @@ classdef refocus < preprocess
     %   Code adapted from 
     %   github.com/nbottenus/REFoCUS
     %   
-    %   $Last updated: 2022/08/11$
+    %   $Last updated: 2024/03/06$
     
     %% constructor
     methods (Access = public)
@@ -23,7 +23,6 @@ classdef refocus < preprocess
         use_filter = false;
         regularization = @Hinv_adjoint;
         decode_parameter = [];
-      
     end
     
     properties (Dependent)
@@ -45,7 +44,7 @@ classdef refocus < preprocess
             
             N_channels = h.input.N_channels;
             N_waves = h.input.N_waves;
-            N_frame = h.input.N_frames;
+            N_frames = h.input.N_frames;
             
             tx_delays = zeros(N_channels,N_waves);
             tx_apod = zeros(N_channels,N_waves);
@@ -53,28 +52,23 @@ classdef refocus < preprocess
                 tx_delays(:,wave) = h.input.sequence(wave).delay_values - h.input.sequence(wave).delay;
                 tx_apod(:,wave) = h.input.sequence(wave).apodization_values;
             end
-
          
             rxdata_multiTx = padarray(h.input.data,h.post_pad_samples,'post');
             normalized_rxdata_multiTx = double(rxdata_multiTx / max(rxdata_multiTx(:)));
             N_samples_output = size(normalized_rxdata_multiTx,1);
-            %%
-            for fr = 1:N_frame
-            % Decode Multistatic Data Using REFoCUS
-                full_synth_data(:,:,:,fr) = refocus_decode(normalized_rxdata_multiTx(:,:,:,fr),tx_delays'*h.input.sampling_frequency,...
-                'fun',h.regularization,'apod',tx_apod','param',h.decode_parameter);
-            end
 
             %%
-            %full_synth_data = reshape(hilbert(reshape(rf_decoded, ...
-            %    [N_samples_output, N_channels*N_channels]), N_samples_output), [N_samples_output, N_channels, N_channels]);
-            
-            %full_synth_data = rf_decoded;
+            full_synth_data = zeros(N_samples_output, N_channels, N_channels,N_frames);
+            for fr = 1:N_frames
+            % Decode Multistatic Data Using REFoCUS
+                full_synth_data(:,:,:,fr) = refocus_decode(normalized_rxdata_multiTx(:,:,:,fr),tx_delays.'*h.input.sampling_frequency,...
+                'fun',h.regularization,'apod',tx_apod.','param',h.decode_parameter);
+            end
             
             % Passband Filter Channel Data
             if h.use_filter
                 N = 10; % Filter Order
-                Wn = [0.22,0.72];
+                Wn = [0.05,0.3];
                 [b, a] = butter(N, Wn); % Filter
                 full_synth_data = filtfilt(b, a, double(full_synth_data));
             end
@@ -95,32 +89,15 @@ classdef refocus < preprocess
                 h.output.sequence(wave).probe.geometry = h.input.probe.geometry; 
                 h.output.sequence(wave).sound_speed = h.input.sound_speed;
                 h.output.sequence(wave).source = uff.point('xyz', h.input.probe.geometry(wave,1:3));
-                h.output.sequence(wave).delay = h.output.sequence(wave).delay_values(wave);
+                h.output.sequence(wave).delay = sqrt(sum(h.output.sequence(wave).source.xyz.^2)) / h.output.sequence(wave).sound_speed; 
+                h.output.sequence(wave).origin = uff.point('xyz', h.input.probe.geometry(wave,1:3));
             end
             
             % Pass reference
             output = h.output;
-            
-            
+
             % Update hash
             h.save_hash();
         end
     end
-    
-    %% set methods
-%     methods
-%         function set.X(h, val)
-%         end
-%     end
-    
-    %% get methods
-%     methods
-%         function val = get.X(h)
-%            
-%         end
-%     end
-
 end
-
-
-
