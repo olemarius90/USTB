@@ -22,7 +22,8 @@ classdef apodization < uff
     
     %   authors: Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
     %            Stefano Fiorentini <stefano.fiorentini@ntnu.no>
-    %   $Last updated: 09/02/2023$
+    %            Anders Vrålstaf <anders.e.vralstad@ntnu.no>
+    %   $Last updated: 16/08/2024$
     
     %% public properties
     properties  (Access = public)
@@ -32,12 +33,13 @@ classdef apodization < uff
         
         f_number  = [1, 1]              % F-number [Fx Fy] [unitless unitless]
         window    = uff.window.none     % UFF.WINDOW class, default uff.window.none
-        MLA       = [1, 0]              % number of multi-line acquisitions, only valid for uff.window.scanline
+        MLA       = [1, 1]              % number of multi-line acquisitions, only valid for uff.window.scanline
         MLA_overlap = [0, 0]            % number of multi-line acquisitions, only valid for uff.window.scanline
         
         tilt      = [0, 0]              % tilt angle [azimuth elevation] [rad rad]
         minimum_aperture = [1e-3, 1e-3] % minimum aperture size in the [x y] direction
         maximum_aperture = [10, 10]     % maximum aperture size in the [x y] direction
+        grating_lobe_angle = [pi,pi];   % grating lobe angle for masking
     end
     
     %% optional properties
@@ -118,6 +120,16 @@ classdef apodization < uff
                 h.maximum_aperture=[in_ap, in_ap];
             else
                 h.maximum_aperture=in_ap(:).';
+            end
+        end
+
+        function set.grating_lobe_angle(h,in_grating_lobe_angle)
+            validateattributes(in_grating_lobe_angle, {'single', 'double'}, {'vector', 'finite', 'positive'})
+
+            if(isscalar(in_grating_lobe_angle))
+                h.grating_lobe_angle=[in_grating_lobe_angle, in_grating_lobe_angle];
+            else
+                h.grating_lobe_angle=in_grating_lobe_angle(:).';
             end
         end
     end
@@ -466,11 +478,17 @@ classdef apodization < uff
                            h.focus.y-h.sequence(n).source.y, ...
                            h.focus.z-h.sequence(n).source.z];
 
+                    % origin -> pixel vectors
+                    OP = [ h.focus.x-h.sequence(n).origin.x, ...
+                           h.focus.y-h.sequence(n).origin.y, ...
+                           h.focus.z-h.sequence(n).origin.z];
+
                     % origin -> source vector
                     OS = [ h.sequence(n).source.x-h.sequence(n).origin.x, ...
                            h.sequence(n).source.y-h.sequence(n).origin.y, ...
                            h.sequence(n).source.z-h.sequence(n).origin.z];
-
+                    
+                    % find unit vectors
                     zu = OS / sqrt(sum(OS.^ 2, 2));
                     yu = cross(zu, [1, 0, 0]);
                     xu = cross(zu, yu);
@@ -482,6 +500,13 @@ classdef apodization < uff
                     zx_dist = z_dist;
                     zy_dist = z_dist;
 
+                    z_dist_from_origin = OP * zu.';
+
+                    % Apply grating lobe masking
+                    zx_dist(abs(atan2(OP(:,1),OP(:,3))-atan2(OS(1),OS(3)))>0.5*h.grating_lobe_angle(1)) = z_dist_from_origin(abs(atan2(OP(:,1),OP(:,3))-atan2(OS(1),OS(3)))>0.5*h.grating_lobe_angle(1));
+                    zy_dist(abs(atan2(OP(:,2),OP(:,3))-atan2(OS(2),OS(3)))>0.5*h.grating_lobe_angle(2)) = z_dist_from_origin(abs(atan2(OP(:,2),OP(:,3))-atan2(OS(2),OS(3)))>0.5*h.grating_lobe_angle(2));
+                    
+                    
                     % Apply minimum aperture
                     zx_dist(abs(z_dist)<=h.minimum_aperture(1)*h.f_number(1)) = ...
                         sign(zx_dist(abs(z_dist)<=h.minimum_aperture(1)*h.f_number(1)))*h.minimum_aperture(1)*h.f_number(1);
