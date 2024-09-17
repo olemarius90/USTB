@@ -488,6 +488,22 @@ classdef apodization < uff
                            h.sequence(n).source.y-h.sequence(n).origin.y, ...
                            h.sequence(n).source.z-h.sequence(n).origin.z];
                     
+                    % STA case
+                    if norm(h.sequence(n).source.xyz-h.sequence(n).origin.xyz,2)<=eps
+                        if isa(h.probe,'uff.curvilinear_array')
+                            OS = [ h.sequence(n).source.x, ...
+                                   h.sequence(n).source.y, ...
+                                   h.sequence(n).source.z+h.probe.radius];
+                        elseif isa(h.probe,'uff.curvilinear_matrix_array')
+                            OS = [ h.sequence(n).source.x, ...
+                                   h.sequence(n).source.y, ...
+                                   h.sequence(n).source.z+h.probe.radius_x];
+                        else
+                            OS = [0,0,1];
+                        end
+                    end
+
+
                     % find unit vectors
                     zu = OS / sqrt(sum(OS.^ 2, 2));
                     yu = cross(zu, [1, 0, 0]);
