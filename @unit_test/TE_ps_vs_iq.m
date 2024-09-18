@@ -31,7 +31,7 @@ function ok = TE_ps_vs_iq(h)
         % === % Fix S.F. 16.02.2023 ===
         seq(n).source=uff.point('xyz', s.source(n,:));
         seq(n).origin=uff.point('xyz', s.source(n,:));
-        seq(n).delay=seq(n).source.distance/s.c0;
+        seq(n).delay=-seq(n).source.distance/s.c0;
     end
     
     % RAW DATA
