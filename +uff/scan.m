@@ -48,7 +48,6 @@ classdef scan < uff
                 figure_handle=figure(figure_handle_in); hold on;
             else
                 figure_handle=figure();
-                title('Probe');
             end
             
             plot3(h.x*1e3,h.y*1e3,h.z*1e3,'k.');

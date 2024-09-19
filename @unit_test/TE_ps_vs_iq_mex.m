@@ -28,9 +28,8 @@ function ok = TE_ps_vs_iq_mex(h)
         seq(n)=wave();
         seq(n).probe=prb;
         seq(n).sound_speed=s.c0;
-        % === % Fix S.F. 16.02.2023 ===
         seq(n).source=uff.point('xyz', s.source(n,:));
-        seq(n).origin=uff.point('xyz', [s.source(n,[1,2]), 0]);
+        seq(n).origin=uff.point('xyz', s.source(n,:));
         seq(n).delay=-seq(n).source.distance/s.c0;
     end
 
