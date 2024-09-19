@@ -22,7 +22,8 @@ classdef apodization < uff
     
     %   authors: Alfonso Rodriguez-Molares <alfonso.r.molares@ntnu.no>
     %            Stefano Fiorentini <stefano.fiorentini@ntnu.no>
-    %   $Last updated: 09/02/2023$
+    %            Anders Vrålstaf <anders.e.vralstad@ntnu.no>
+    %   $Last updated: 16/08/2024$
     
     %% public properties
     properties  (Access = public)
@@ -32,12 +33,13 @@ classdef apodization < uff
         
         f_number  = [1, 1]              % F-number [Fx Fy] [unitless unitless]
         window    = uff.window.none     % UFF.WINDOW class, default uff.window.none
-        MLA       = 1                   % number of multi-line acquisitions, only valid for uff.window.scanline
-        MLA_overlap = 0                 % number of multi-line acquisitions, only valid for uff.window.scanline
+        MLA       = [1, 1]              % number of multi-line acquisitions, only valid for uff.window.scanline
+        MLA_overlap = [0, 0]            % number of multi-line acquisitions, only valid for uff.window.scanline
         
         tilt      = [0, 0]              % tilt angle [azimuth elevation] [rad rad]
         minimum_aperture = [1e-3, 1e-3] % minimum aperture size in the [x y] direction
         maximum_aperture = [10, 10]     % maximum aperture size in the [x y] direction
+        grating_lobe_angle = [pi,pi];   % grating lobe angle for masking
     end
     
     %% optional properties
@@ -118,6 +120,16 @@ classdef apodization < uff
                 h.maximum_aperture=[in_ap, in_ap];
             else
                 h.maximum_aperture=in_ap(:).';
+            end
+        end
+
+        function set.grating_lobe_angle(h,in_grating_lobe_angle)
+            validateattributes(in_grating_lobe_angle, {'single', 'double'}, {'vector', 'finite', 'positive'})
+
+            if(isscalar(in_grating_lobe_angle))
+                h.grating_lobe_angle=[in_grating_lobe_angle, in_grating_lobe_angle];
+            else
+                h.grating_lobe_angle=in_grating_lobe_angle(:).';
             end
         end
     end
@@ -235,32 +247,45 @@ classdef apodization < uff
             
             % NONE APODIZATION
             if(h.window==uff.window.none)
-                h.data_backup=ones(h.focus.N_pixels,N_waves);
+                h.data_backup=ones([h.focus.N_pixels,N_waves]);
                 
             % SCALINE APODIZATION (MLA scanlines per wave)
             elseif (h.window==uff.window.scanline)
                 
                 % linear scan
                 if isa(h.focus,'uff.linear_scan')
-                    assert(N_waves==h.focus.N_x_axis/h.MLA, 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
-                    ACell=repmat({ones(h.MLA,1)},[1,h.focus.N_x_axis/h.MLA]);
-                    if (h.MLA_overlap>0)
-                        ABlock=filtfilt(ones(1,h.MLA_overlap+1)/(h.MLA_overlap+1),1,blkdiag(ACell{:}));
-                    else
-                        ABlock=blkdiag(ACell{:});
+                    assert(N_waves==h.focus.N_x_axis*h.focus.N_y_axis/prod(h.MLA), 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
+                    
+                    B = zeros([N_waves, h.focus.N_x_axis, h.focus.N_y_axis]);
+                    A = cat(2, cat(1, ones([h.MLA, 1]), zeros([h.focus.N_x_axis-h.MLA(1), h.MLA(2)])), ...
+                        zeros([h.focus.N_x_axis, h.focus.N_y_axis-h.MLA(2)]));
+
+                    for i = 1:h.focus.N_x_axis/h.MLA(1)
+                        for j = 1:h.focus.N_y_axis/h.MLA(2)
+                            B(i+(j-1)*h.focus.N_x_axis/h.MLA(1), :, :) = filter2(ones(h.MLA_overlap+1)/prod(h.MLA_overlap+1), ...
+                                circshift(A, [(i-1)*h.MLA(1), (j-1)*h.MLA(2)]), 'same');
+                        end
                     end
-                    h.data_backup=kron(ABlock,ones(h.focus.N_z_axis,1));
+
+                    h.data_backup=reshape(permute(B.*ones([1, 1, 1, h.focus.N_z_axis]), [4,2,3,1]), [h.focus.N_pixels, N_waves]);
                     
                 % sector scan
                 elseif isa(h.focus,'uff.sector_scan')
-                    assert(N_waves==h.focus.N_azimuth_axis/h.MLA,'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
-                    ACell=repmat({ones(h.MLA,1)},[1,h.focus.N_azimuth_axis/h.MLA]);
-                    if (h.MLA_overlap>0)                    
-                        ABlock=filtfilt(ones([1,h.MLA_overlap+1])/(h.MLA_overlap+1),1,blkdiag(ACell{:}));
-                    else
-                        ABlock=blkdiag(ACell{:});
+                     assert(N_waves==h.focus.N_azimuth_axis*h.focus.N_elevation_axis/prod(h.MLA), 'The number of waves in the sequence does not match with the number of scanlines and set MLA.');
+                    
+                    B = zeros([N_waves, h.focus.N_azimuth_axis, h.focus.N_elevation_axis]);
+                    A = cat(2, cat(1, ones([h.MLA, 1]), zeros([h.focus.N_azimuth_axis-h.MLA(1), h.MLA(2)])), ...
+                        zeros([h.focus.N_azimuth_axis, h.focus.N_elevation_axis-h.MLA(2)]));
+
+                    for i = 1:h.focus.N_azimuth_axis/h.MLA(1)
+                        for j = 1:h.focus.N_elevation_axis/h.MLA(2)
+                            B(i+(j-1)*h.focus.N_azimuth_axis/h.MLA(1), :, :) = filter2(ones(h.MLA_overlap+1)/prod(h.MLA_overlap+1), ...
+                                circshift(A, [(i-1)*h.MLA(1), (j-1)*h.MLA(2)]), 'same');
+                        end
                     end
-                    h.data_backup=kron(ABlock,ones(h.focus.N_depth_axis,1));
+
+                    h.data_backup=reshape(permute(B.*ones([1, 1, 1, h.focus.N_depth_axis]), [4,2,3,1]), [h.focus.N_pixels, N_waves]);
+
                 else
                     error('uff.apodization:Scanline','The scan class does not support scanline based beamforming. This must be done manually, defining several scan and setting the apodization to uff.window.none.');
                 end
@@ -376,21 +401,33 @@ classdef apodization < uff
 
                 pixel_distance = sqrt((h.focus.x-x0(:)).^2+(h.focus.y-y0(:)).^2+(h.focus.z-z0(:)).^2);
                 
-                x_dist=  x - x0(:);
+                x_dist = x - x0(:);
                 y_dist = y - y0(:);
                 z_dist = pixel_distance .* ones([1, h.probe.N_elements]);
                     
             % If not, then we have a flat probe and a linear scan. In this
-            % case the aperture is centered at each beam's x coordinate
+            % case the aperture is centered at each beam's [x, y] coordinate
             else
                 if isempty(h.origin)
                     x_dist = h.focus.x - x;
                     y_dist = h.focus.y - y;
                     z_dist = h.focus.z - z;
                 else
-                    x_dist = h.origin.x - x;
-                    y_dist = h.origin.y - y;
-                    z_dist = h.origin.z - z;                    
+                    if(isscalar(h.origin))
+                        x0 = h.origin.x;
+                        y0 = h.origin.y;
+                        z0 = h.origin.z;
+                    else
+                        x0 = ones([h.focus.N_depth_axis,1]) .* [h.origin.x];
+                        y0 = ones([h.focus.N_depth_axis,1]) .* [h.origin.y];
+                        z0 = ones([h.focus.N_depth_axis,1]) .* [h.origin.z];
+                    end
+
+                    pixel_distance = sqrt((h.focus.x-x0(:)).^2+(h.focus.y-y0(:)).^2+(h.focus.z-z0(:)).^2);
+
+                    x_dist = x - x0(:);
+                    y_dist = y - y0(:);
+                    z_dist = pixel_distance .* ones([1, h.probe.N_elements]);
                 end
             end
 
@@ -430,28 +467,63 @@ classdef apodization < uff
                 % Plane Wave case
                 if (h.sequence(n).wavefront==uff.wavefront.plane||isinf(h.sequence(n).source.distance))
 
-                    %% Probably needs to be adapted in case plane waves are used in combination with a non-zero origin.
+                    % Probably needs to be adapted in case plane waves are used in combination with a non-zero origin.
                     tan_theta(:,n)=ones(h.focus.N_pixels,1)*tan(h.sequence(n).source.azimuth - h.tilt(1));
                     tan_phi(:,n)=ones(h.focus.N_pixels,1)*tan(h.sequence(n).source.elevation - h.tilt(2));
                     distance(:,n) = h.focus.z;
 
                 % Diverging Wave or Converging Wave case
                 else
+                    % source -> pixel vectors
+                    SP = [ h.focus.x-h.sequence(n).source.x, ...
+                           h.focus.y-h.sequence(n).source.y, ...
+                           h.focus.z-h.sequence(n).source.z];
 
-                    % Calculate distances
-                    x_dist=h.focus.x-h.sequence(n).source.x;
-                    y_dist=h.focus.y-h.sequence(n).source.y;
-                    z_dist=h.focus.z-h.sequence(n).source.z;
+                    % origin -> pixel vectors
+                    OP = [ h.focus.x-h.sequence(n).origin.x, ...
+                           h.focus.y-h.sequence(n).origin.y, ...
+                           h.focus.z-h.sequence(n).origin.z];
 
-                    % Calculate source angle with respect to the aperture origin
-                    s0theta=atan2(h.sequence(n).source.x-h.sequence(n).origin.x, h.sequence(n).source.z-h.sequence(n).origin.z);
-                    s0phi=atan2(h.sequence(n).source.y-h.sequence(n).origin.y, h.sequence(n).source.z-h.sequence(n).origin.z);
+                    % origin -> source vector
+                    OS = [ h.sequence(n).source.x-h.sequence(n).origin.x, ...
+                           h.sequence(n).source.y-h.sequence(n).origin.y, ...
+                           h.sequence(n).source.z-h.sequence(n).origin.z];
+                    
+                    % STA case
+                    if norm(h.sequence(n).source.xyz-h.sequence(n).origin.xyz,2)<=eps
+                        if isa(h.probe,'uff.curvilinear_array')
+                            OS = [ h.sequence(n).source.x, ...
+                                   h.sequence(n).source.y, ...
+                                   h.sequence(n).source.z+h.probe.radius];
+                        elseif isa(h.probe,'uff.curvilinear_matrix_array')
+                            OS = [ h.sequence(n).source.x, ...
+                                   h.sequence(n).source.y, ...
+                                   h.sequence(n).source.z+h.probe.radius_x];
+                        else
+                            OS = [0,0,1];
+                        end
+                    end
 
-                    % Apply beam & tilt
-                    [x_dist, y_dist, z_dist] = tools.rotate_points(x_dist, y_dist, z_dist, h.tilt(1)+s0theta, h.tilt(2)+s0phi);
+
+                    % find unit vectors
+                    zu = OS / sqrt(sum(OS.^ 2, 2));
+                    yu = cross(zu, [1, 0, 0]);
+                    xu = cross(zu, yu);
+
+                    z_dist = SP * zu.';
+                    x_dist = SP * xu.';
+                    y_dist = SP * yu.';
+
                     zx_dist = z_dist;
                     zy_dist = z_dist;
 
+                    z_dist_from_origin = OP * zu.';
+
+                    % Apply grating lobe masking
+                    zx_dist(abs(atan2(OP(:,1),OP(:,3))-atan2(OS(1),OS(3)))>0.5*h.grating_lobe_angle(1)) = z_dist_from_origin(abs(atan2(OP(:,1),OP(:,3))-atan2(OS(1),OS(3)))>0.5*h.grating_lobe_angle(1));
+                    zy_dist(abs(atan2(OP(:,2),OP(:,3))-atan2(OS(2),OS(3)))>0.5*h.grating_lobe_angle(2)) = z_dist_from_origin(abs(atan2(OP(:,2),OP(:,3))-atan2(OS(2),OS(3)))>0.5*h.grating_lobe_angle(2));
+                    
+                    
                     % Apply minimum aperture
                     zx_dist(abs(z_dist)<=h.minimum_aperture(1)*h.f_number(1)) = ...
                         sign(zx_dist(abs(z_dist)<=h.minimum_aperture(1)*h.f_number(1)))*h.minimum_aperture(1)*h.f_number(1);
@@ -476,70 +548,179 @@ classdef apodization < uff
     %% display methods
     methods
         
-        function figure_handle=plot(h,figure_handle_in,n)
+        function figure_handle = plot(h, figure_handle_in, n_element)
             % PLOT Plot apodization
-            if nargin>1 && not(isempty(figure_handle_in))
-                figure_handle=figure(figure_handle_in);
+            if nargin>1 && ~(isempty(figure_handle_in))
+                figure_handle = figure(figure_handle_in);
             else
-                figure_handle=figure();
+                figure_handle = figure();
             end
             
             if nargin <3
-                n=round(size(h.data,2)/2);
+                n_element = ceil(size(h.data,2)/2);
             end
                         
             isreceive = isempty(h.sequence);
             
             switch class(h.focus)
                 case 'uff.linear_scan'
-                    dim = [h.focus.N_z_axis, h.focus.N_x_axis];
+                    dim = [h.focus.N_z_axis, h.focus.N_x_axis, h.focus.N_y_axis];
                 case 'uff.sector_scan'
-                    dim = [h.focus.N_depth_axis, h.focus.N_azimuth_axis];
+                    dim = [h.focus.N_depth_axis, h.focus.N_azimuth_axis, h.focus.N_elevation_axis];
                 otherwise
                     error('Plotting apodization is only supported for linear and sector scans')
             end
-            
+
             X = reshape(h.focus.x, dim);
             Y = reshape(h.focus.y, dim);
             Z = reshape(h.focus.z, dim);
 
-            data = h.data; %#ok<*PROPLC>
+            x0 = ceil(dim/2);
 
-            subplot(1,2,1);
-            surface(X*1e3,Z*1e3,reshape(data(:,n), dim),'Linestyle','none')
-            xlabel('x [mm]');
-            ylabel('z [mm]');
-            set(gca,'Ydir','reverse');
+            figure_handle.UserData.CData = reshape(h.data, [dim, size(h.data, 2)]);
+            figure_handle.UserData.dim = dim;
+            figure_handle.UserData.n_element = n_element;
+            figure_handle.UserData.xyz.x = X;
+            figure_handle.UserData.xyz.y = Y;
+            figure_handle.UserData.xyz.z = Z;
+
+            iptPointerManager(figure_handle);
+
+            pointerBehaviour.exitFcn = @(fig,currentPoint) set(fig, 'Pointer','arrow');
+            pointerBehaviour.enterFcn = @(fig,currentPoint) set(fig, 'Pointer','crosshair');
+            pointerBehaviour.traverseFcn = [];
+
+            tiledlayout(1,2,'TileSpacing','compact','Padding','compact')
+
+            % Tile 1 - 3-D rendering of the apodization matrix for a
+            % specific element
+            ax(1) = nexttile();
+
+            % Add navigation buttons
+            tb = axtoolbar('default');
+            axtoolbarbtn(tb, 'push', 'Icon', ...
+                fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Forward_16.png'), ...
+                'Tooltip', 'Next','ButtonPushedFcn', @nextElementFcn);
+            axtoolbarbtn(tb, 'push', 'Icon', ...
+                fullfile(matlabroot, 'toolbox/shared/controllib/general/resources/toolstrip_icons/Back_16.png'), ...
+                'Tooltip', 'Previous','ButtonPushedFcn', @previousElementFcn);
+
+            if dim(2) > 1 && dim(3) == 1
+                surface(squeeze(X(:,:,x0(3)))*1e3,squeeze(Y(:,:,x0(3)))*1e3,squeeze(Z(:,:,x0(3)))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(:,:,x0(3),figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.zx', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'zx', 'y', x0(3)))
+            end
+
+            if dim(2) == 1 && dim(3) > 1
+                surface(squeeze(X(:,x0(2),:))*1e3,squeeze(Y(:,x0(2),:))*1e3,squeeze(Z(:,x0(2),:))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(:,x0(2),:,figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.zy', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'zy', 'x', x0(2)))
+            end
+
+            if dim(2) > 1 && dim(3) > 1
+                  surface(squeeze(X(x0(1),:,:))*1e3,squeeze(Y(x0(1),:,:))*1e3,squeeze(Z(x0(1),:,:))*1e3, ...
+                    squeeze(figure_handle.UserData.CData(x0(1),:,:,figure_handle.UserData.n_element)), ...
+                    'LineStyle', 'none', 'Tag', 'apod.xy', 'ButtonDownFcn', @updateFcn, ...
+                    'ApplicationData', struct('iptPointerBehavior', pointerBehaviour), 'UserData', struct('dim', 'xy', 'z', x0(1)))
+            end
+
+            xlabel('x [mm]')
+            ylabel('y [mm]')
+            zlabel('z [mm]')
             grid on
             box on
             axis equal tight
-            ylabel(colorbar(), 'Apodization value')
-            clim([0, 1])
+            ylabel(colorbar(), 'Apodization')
+            set(gca, 'ZDir', 'reverse')
+            caxis([0, 1])
+            view(3)
             if isreceive
-                title(sprintf('Apodization values for element %d',n));
+                ax(1).UserData.title = 'Receive apodization rendering for element %d';
             else
-                title(sprintf('Apodization values for wave %d',n));
+                ax(1).UserData.title = 'Transmit apodization rendering for wave %d';
             end
+            title(ax(1), sprintf(ax(1).UserData.title, n_element))
 
-            [x, z]=ginput(1);
-            while ~isempty(x)
-                [~, ns]=min(sum(bsxfun(@minus, h.focus(1).xyz, [x 0 z]/1e3).^2,2));
-                subplot(1,2,2)
-                plot(data(ns,:))
-                grid on
-                axis tight
-                ylim([0, 1.2]);
-                if isreceive
-                    title(sprintf('Receive apodization at pixel (%0.2f,%0.2f) mm.',x,z));
-                    xlabel('Element');
-                else
-                    title(sprintf('Transmit apodization at pixel (%0.2f,%0.2f) mm.',x,z));
-                    xlabel('wave');
-                end
 
-                subplot(1,2,1);
-                [x, z]=ginput(1);
+            % Tile 2 - Plot for all apodization values at a specific pixel
+            ax(2) = nexttile();
+            plot(squeeze(figure_handle.UserData.CData(1,1,1,:)), 'Tag', 'apod.e');
+            grid on
+            axis tight
+            ylim([0, 1])
+            if isreceive
+                ax(2).UserData.title = 'Receive apodization at pixel [%0.2f, %0.2f, %0.2f] mm';
+                xlabel('Element')
+            else
+                ax(2).UserData.title = 'Transmit apodization at pixel [%0.2f, %0.2f, %0.2f] mm';
+                xlabel('wave')
             end
+            ylabel('Apodization weight')
+
+            title(ax(2), sprintf(ax(2).UserData.title,X(1),Y(1),Z(1)))
+
+
         end
     end
+end
+
+function updateFcn(obj, eventObj)
+fig = ancestor(obj, 'figure');
+xyz = eventObj.IntersectionPoint;
+
+gHandle = findobj(fig, 'Tag', 'apod.e');
+
+[~, I] = min(sqrt(sum((xyz-[obj.XData(:), obj.YData(:), obj.ZData(:)]).^2, 2)), [], 1);
+[i, j, k] = ind2sub(fig.UserData.dim,I);
+
+gHandle.YData = squeeze(fig.UserData.CData(i,j,k,:));
+title(gHandle.Parent, sprintf(gHandle.Parent.UserData.title, xyz(1), xyz(2), xyz(3)))
+end
+
+function previousElementFcn(obj, ~)
+fig = ancestor(obj, 'figure');
+
+if fig.UserData.n_element == 1
+    return
+else
+    fig.UserData.n_element = fig.UserData.n_element - 1;
+    gHandle = findobj(fig, '-regexp', 'Tag', 'apod.[xyz]');
+
+    for n = 1:length(gHandle)
+        switch gHandle(n).UserData.dim
+            case 'zx'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,:,gHandle(n).UserData.y,fig.UserData.n_element));
+            case 'zy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,gHandle(n).UserData.x,:,fig.UserData.n_element));
+            case 'xy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(gHandle(n).UserData.z,:,:,fig.UserData.n_element));
+        end
+    end
+    title(gHandle(1).Parent, sprintf(gHandle(1).Parent.UserData.title, fig.UserData.n_element))
+end
+end
+
+function nextElementFcn(obj, ~)
+fig = ancestor(obj, 'figure');
+
+if fig.UserData.n_element == size(fig.UserData.CData, 4)
+    return
+else
+    fig.UserData.n_element = fig.UserData.n_element + 1;
+    gHandle = findobj(fig, '-regexp', 'Tag', 'apod.[xyz]');
+
+    for n = 1:length(gHandle)
+        switch gHandle(n).UserData.dim
+            case 'zx'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,:,gHandle(n).UserData.y,fig.UserData.n_element));
+            case 'zy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(:,gHandle(n).UserData.x,:,fig.UserData.n_element));
+            case 'xy'
+                gHandle(n).CData = squeeze(fig.UserData.CData(gHandle(n).UserData.z,:,:,fig.UserData.n_element));
+        end
+    end
+    title(gHandle(1).Parent, sprintf(gHandle(1).Parent.UserData.title, fig.UserData.n_element))
+end
 end

@@ -33,7 +33,7 @@ classdef scan_converter < postprocess
             % Define the interpolation object. Define scatteredInterpolant
             % once and only change the data to be interpolated to preserve
             % the underlying triangulation
-            F = scatteredInterpolant(h.input.scan.x, h.input.scan.z, ...
+            F = scatteredInterpolant(h.input.scan.x, h.input.scan.y, h.input.scan.z, ...
                h.input.data(:,1), 'linear', 'none');
                                     
             % Waitbar
@@ -50,7 +50,7 @@ classdef scan_converter < postprocess
 
                         F.values = h.input.data(:,n_channel,n_wave,n_frames);
                         output.data(:,n_channel,n_wave,n_frames) = ...
-                            F(h.scan.x, h.scan.z);
+                            F(h.scan.x, h.scan.y, h.scan.z);
                     end
                 end
             end

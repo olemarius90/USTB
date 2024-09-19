@@ -15,6 +15,7 @@ classdef das < midprocess
         
         spherical_transmit_delay_model = spherical_transmit_delay_model.hybrid; % spherical transmit delay model enumeration for deciding model when the source is in front of the transducer
         pw_margin = 1e-3;                   % The margin of the area around focus in m for the spherical_transmit_delay_model.hybrid
+
         lens_delay = 0;                     % Additional delay added to the receive delay
         blending_power = 1/2; 
         transmit_delay                      % Variable returning the calculated tx part of the receive delay so that it can be plotted
@@ -139,6 +140,7 @@ classdef das < midprocess
                                         else
                                             error('Only linear scan and sector scan in 2D is supported for the hybrid spherical transmit delay model.');
                                         end
+
                                         normalized_distance = min(abs(h.channel_data.sequence(n_wave).source.distance-sqrt(sum(h.scan.xyz.^2,2))) ./ h.channel_data.sequence(n_wave).source.distance, 1);
                                         
                                         transmit_delay(:,n_wave) = transmit_delay(:,n_wave) + h.channel_data.sequence(n_wave).source.distance;
