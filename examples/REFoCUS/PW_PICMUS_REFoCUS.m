@@ -1,8 +1,17 @@
 %% REFOCUS on PW data
 % The very fasinating REFoCUS algorithm published in
-% Nick Bottenus and
+% 
+% Bottenus, N. (2018). Recovery of the Complete Data Set from Focused Transmit 
+%   Beams. IEEE Transactions on Ultrasonics, Ferroelectrics, and Frequency Control, 
+%   65(1), 30–38. https://doi.org/10.1109/TUFFC.2017.2773495
+% 
 % further develop in 
-%
+% 
+% Ali, R., Herickhoff, C. D., Hyun, D., Dahl, J. J., & Bottenus, N. (2020). 
+%  Extending Retrospective Encoding for Robust Recovery of the Multistatic 
+%  Data Set. IEEE Transactions on Ultrasonics, Ferroelectrics, and Frequency Control,
+%  67(5), 943–956. https://doi.org/10.1109/TUFFC.2019.2961875
+% 
 % Is quite fasinating! Here we explore the concept by comparing
 % conventional PW beamforming using the generalized beamformer in the USTB,
 % and use REFoCUS to refocus the PW channel data into a STAI channel data.
