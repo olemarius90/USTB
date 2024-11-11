@@ -78,6 +78,7 @@ mid_RTB.channel_data = channel_data;
 mid_RTB.dimension = dimension.transmit();
 mid_RTB.receive_apodization.window=uff.window.none;
 mid_RTB.receive_apodization.f_number = 1.7;
+%mid_RTB.spherical_transmit_delay_model = spherical_transmit_delay_model.hybrid;
 mid_RTB.spherical_transmit_delay_model = spherical_transmit_delay_model.unified;
 mid_RTB.transmit_apodization.MLA = MLA;
 mid_RTB.transmit_apodization.MLA_overlap = 2;
