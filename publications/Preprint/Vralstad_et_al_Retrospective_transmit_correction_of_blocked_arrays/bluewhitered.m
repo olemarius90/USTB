@@ -27,8 +27,6 @@ function newmap = bluewhitered(m)
 %
 %   See also HSV, HOT, COOL, BONE, COPPER, PINK, FLAG, 
 %   COLORMAP, RGBPLOT.
-% Adapted for USTB by Anders E. Vrålstad <anders.e.vralstad@ntnu.no>
-
 
 if nargin < 1
    m = size(get(gcf,'colormap'),1);

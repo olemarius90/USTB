@@ -167,7 +167,7 @@ v1_area =drawrectangle('Position',center_rectangle-[0.008,0,0,0]);
 v2_area =drawrectangle('Position',center_rectangle+[0.008,0,0,0]);
 c_area =drawrectangle('Position',center_rectangle);
 
-[GCNR, v1_binary, v2_binary, c_binary] = tools.contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 80,storefolder,c_area,v1_area,v2_area);
+[GCNR, v1_binary, v2_binary, c_binary] = contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 80,storefolder,c_area,v1_area,v2_area);
 
 %% MAKE DIFF RTBs
 
@@ -175,7 +175,7 @@ all_images = b_data_compare.get_image();
 diff = all_images(:,:,2)-all_images(:,:,1)-1.6;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
 f =figure;
-imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(tools.bluewhitered);colorbar
+imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
@@ -189,7 +189,7 @@ all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,2)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
 f = figure();
-imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(tools.bluewhitered);colorbar
+imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
@@ -204,7 +204,7 @@ all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,1)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
 f = figure();
-imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(tools.bluewhitered);colorbar
+imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
