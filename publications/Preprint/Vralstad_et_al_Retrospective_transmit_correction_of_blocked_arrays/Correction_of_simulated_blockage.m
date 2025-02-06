@@ -5,9 +5,9 @@ local_path = [ustb_path(),'/data/']; % location of example data
 addpath(local_path);
 
 % Choose dataset
-filename='speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff'; tag = 'full';
+%filename='speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff'; tag = 'full';
 %filename='speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff'; tag = 'third';
-%filename='speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'; tag = 'half';
+filename='speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'; tag = 'half';
 tools.download(filename, url, data_path);   
 
 % check if the file is available in the local path or downloads otherwise
@@ -79,6 +79,8 @@ b_data_RTB_comp.plot([],'RTB Compensated');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
+b_data_tx_apod.plot([],['TxApod with shift'],[],'none');
+colormap default;
 %% Demod
 demod = preprocess.fast_demodulation();
 demod.modulation_frequency = 2.5*10^6;
