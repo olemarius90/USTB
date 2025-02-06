@@ -1,3 +1,20 @@
+%% In silico correction of blocked array using RTB and REFoCUS
+%
+% Creating the simulated results in the paper:
+%
+% A.E. Vrålstad, S.-E. Måsøy, T.G. Bjåstad, A.R. Sørnes and O.M.H. Rindal,
+% "Retrospective transmit correction of blocked arrays applied to cardiac
+% ultrasound imaging" in XX. doi:YY.ZZZZ/XX.QQQQQQQQ.
+%
+% This script creates Fig.3-4 in the paper. 
+%
+% This code uses the UltraSound ToolBox (USTB) and you'll need to download 
+% it first to successfully rund this code. To know more about the USTB 
+% visit http://www.ustb.no/
+%
+% by Anders E. Vrålstad
+%% Clear environment
+clear all; close all;
 %% Load data
 % Read the data, poentitally download it
 url='http://ustb.no/datasets/';      % if not found downloaded from here
@@ -10,21 +27,23 @@ addpath(local_path);
 filename='speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'; tag = 'half';
 tools.download(filename, url, data_path);   
 
-% check if the file is available in the local path or downloads otherwise
+% Check if the file is available in the local path or downloads otherwise
 channel_data = uff.read_object([data_path, filesep, filename],'/channel_data');
 channel_data.data = channel_data.data./max(channel_data.data(:));
 
-%% Run REFOCUS preprocess
+storefolder = ['./Figures/simulated_gCNR_',tag, '/'];
+mkdir(storefolder);
+%% Run REFoCUS preprocess
 tic
-refocus = preprocess.refocus();
-refocus.input = channel_data;
-refocus.use_filter = 0;
-refocus.filter_N = 10;
-refocus.filter_Wn = [0.05,0.4];
-refocus.regularization = @Hinv_tikhonov;
-refocus.decode_parameter = 0.01;
-refocus.post_pad_samples = 0;
-channel_data_REFOCUS = refocus.go();
+REFoCUS = preprocess.refocus();
+REFoCUS.input = channel_data;
+REFoCUS.use_filter = 0;
+REFoCUS.filter_N = 10;
+REFoCUS.filter_Wn = [0.05,0.4];
+REFoCUS.regularization = @Hinv_tikhonov;
+REFoCUS.decode_parameter = 0.01;
+REFoCUS.post_pad_samples = 0;
+channel_data_REFoCUS = REFoCUS.go();
 toc()
 
 %% Create Sector scan
@@ -34,7 +53,7 @@ for n=1:channel_data.N_waves
     azimuth_axis(n) = channel_data.sequence(n).source.azimuth;
 end
 scan=uff.sector_scan('azimuth_axis',azimuth_axis,'depth_axis',depth_axis);
-%% BEAMFORMER
+%% RTB Beamforming
 % Calculate F-number
 Fnumber = channel_data.sequence(1).source.distance/(max(channel_data.probe.x)*2);
 
@@ -54,7 +73,7 @@ b_data_RTB.plot([], 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['TxApod no shift'],[],'none');
+b_data_tx_apod.plot([],['Tx Weights no shift'],[],'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -75,90 +94,77 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-b_data_RTB_comp.plot([],'RTB Compensated');
+b_data_RTB_comp.plot([],'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['TxApod with shift'],[],'none');
+b_data_tx_apod.plot([],['Tx Weights with shift'],[],'none');
 colormap default;
-%% Demod
+%% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
 demod.modulation_frequency = 2.5*10^6;
-demod.input = channel_data_REFOCUS;
+demod.input = channel_data_REFoCUS;
 demod.plot_on = true;
 channel_data_STAI_demod = demod.go();
 %% REFoCUS Beamforming
-mid_REFOCUS = midprocess.das();
-mid_REFOCUS.channel_data=channel_data_STAI_demod;
-mid_REFOCUS.dimension = dimension.receive();
-mid_REFOCUS.scan=scan;
-mid_REFOCUS.code = code.mex;
-mid_REFOCUS.transmit_apodization.window=uff.window.boxcar;
-mid_REFOCUS.receive_apodization.f_number=1.7;
-mid_REFOCUS.receive_apodization.window=uff.window.boxcar;
-mid_REFOCUS.transmit_apodization.f_number=1;
-b_data_delayed_REFOCUS = mid_REFOCUS.go();
-b_data_delayed_REFOCUS.plot([],'REFoCUS');
+mid_REFoCUS = midprocess.das();
+mid_REFoCUS.channel_data=channel_data_STAI_demod;
+mid_REFoCUS.dimension = dimension.receive();
+mid_REFoCUS.scan=scan;
+mid_REFoCUS.code = code.mex;
+mid_REFoCUS.transmit_apodization.window=uff.window.boxcar;
+mid_REFoCUS.receive_apodization.f_number=1.7;
+mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
+mid_REFoCUS.transmit_apodization.f_number=1;
+b_data_delayed_REFoCUS = mid_REFoCUS.go();
+b_data_delayed_REFoCUS.plot([],'REFoCUS');
 cc = postprocess.coherent_compounding;
-cc.input = b_data_delayed_REFOCUS;
-b_data_refocus = cc.go();
-b_data_refocus.plot();
+cc.input = b_data_delayed_REFoCUS;
+b_data_REFoCUS = cc.go();
+b_data_REFoCUS.plot();
 
-%%
-%rtb_mean_norm = mean(mean(RTB_image(450:500,69:76)));
-%refocus_mean_norm = mean(mean(RTB_image(450:500,69:76)));
-% b_data_compare = uff.beamformed_data(b_data_refocus);
-% b_data_compare.data(:,1,1,1) = b_data_RTB_unweighted.data./max(b_data_RTB_unweighted.data(:));
-% b_data_compare.data(:,1,1,2) = b_data_refocus.data./max(b_data_refocus.data(:));
-% b_data_compare.plot([],['1=DAS,2=REFoCUS']);
-% b_data_compare.frame_rate = 0.5;
-% rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-% clim([-80 0]);xlim([-20 20])
-
-
-%% Save pngs
+%% Save PNGs
 f = figure;
-b_data_RTB.plot([],'RTB');
+b_data_RTB.plot(f,'RTB');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-80 0]);xlim([-20 20]);
-% savefig(f,['./Figures/RTB_', tag,'.fig']);
-% saveas(f,['./Figures/RTB_', tag,'.png']);
+clim([-60 0]);xlim([-20 20]);
+savefig(f,[storefolder,'RTB_', tag,'.fig']);
+saveas(f,[storefolder,'RTB_', tag,'.png']);
 
 b_data_RTB_comp.plot(f,'RTB Compensated');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-80 0]);xlim([-20 20]);
-% savefig(f,['./Figures/RTB_compensated_', tag,'.fig']);
-% saveas(f,['./Figures/RTB_compensated_', tag,'.png']);
+clim([-60 0]);xlim([-20 20]);
+savefig(f,[storefolder,'RTB_compensated_', tag,'.fig']);
+saveas(f,[storefolder,'RTB_compensated_', tag,'.png']);
 
 
-b_data_refocus.plot(f,'REFOCUS');
+b_data_REFoCUS.plot(f,'REFoCUS');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-80 0]);xlim([-20 20])
-% savefig(f,['./Figures/REFoCUS_', tag,'.fig']);
-% saveas(f,['./Figures/REFoCUS_', tag,'.png']);
+clim([-60 0]);xlim([-20 20])
+savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
+saveas(f,[storefolder,'REFoCUS_', tag,'.png']);
 
-%% Save gif
+%% Save GIF
 b_data_compare = uff.beamformed_data(b_data_RTB);
 b_data_compare.data(:,1,1,1) = b_data_RTB.data./max(b_data_RTB.data(:));
 b_data_compare.data(:,1,1,2) = b_data_RTB_comp.data./max(b_data_RTB_comp.data(:));
-b_data_compare.data(:,1,1,3) = b_data_refocus.data./max(b_data_refocus.data(:))/3;
+b_data_compare.data(:,1,1,3) = b_data_REFoCUS.data./max(b_data_REFoCUS.data(:))/3;
 
 all_images = squeeze(b_data_compare.get_image());
 b_data_compare.data(:,1,1,2) = b_data_compare.data(:,1,1,2) .* median(all_images(:,:,1)./all_images(:,:,2),'all','omitnan');
 b_data_compare.data(:,1,1,3) = b_data_compare.data(:,1,1,3) .* median(all_images(:,:,1)./all_images(:,:,3),'all','omitnan');
-
+b_data_compare.frame_rate = 1;
 b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-80 0]);xlim([-20 20]);
-b_data_RTB.frame_rate = 1;
-% b_data_RTB.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+clim([-60 0]);xlim([-20 20]);
+b_data_compare.frame_rate = 1;
+b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
 
 
 %% Measure contrast
-storefolder = ['./Figures/simulated_gCNR_',tag, '/'];
 [RTB_sc, Xs,Zs] = tools.scan_convert(b_data_RTB.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
 [RTB_comp_sc, Xs,Zs] = tools.scan_convert(b_data_RTB_comp.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
-[REFoCUS_sc, Xs,Zs] = tools.scan_convert(b_data_refocus.get_image()-12,b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
+[REFoCUS_sc, Xs,Zs] = tools.scan_convert(b_data_REFoCUS.get_image()-12,b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
 img_cell = {RTB_sc,RTB_comp_sc,REFoCUS_sc};
 name_cell = {'RTB','RTB Compensated', 'REFoCUS'};
 das_handle = figure(); imagesc(Xs,Zs,img_cell{3});
@@ -169,10 +175,9 @@ v1_area =drawrectangle('Position',center_rectangle-[0.008,0,0,0]);
 v2_area =drawrectangle('Position',center_rectangle+[0.008,0,0,0]);
 c_area =drawrectangle('Position',center_rectangle);
 
-[GCNR, v1_binary, v2_binary, c_binary] = contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 80,storefolder,c_area,v1_area,v2_area);
+[GCNR, v1_binary, v2_binary, c_binary] = contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 60,storefolder,c_area,v1_area,v2_area);
 
-%% MAKE DIFF RTBs
-
+%% Make Difference Images: of RTBs
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,2)-all_images(:,:,1)-1.6;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
@@ -182,11 +187,12 @@ xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
 xlim([-20,20]);
+ylim([60,110]);
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
-% savefig(f,['./Figures/DIFF/RTBminusRTBcomp_',tag,'.fig']);
-% saveas(f,['./Figures/DIFF/RTBminusRTBcomp_',tag,'.png']);
+savefig(f,[storefolder,'RTBminusRTBcomp_',tag,'.fig']);
+saveas(f,[storefolder,'RTBminusRTBcomp_',tag,'.png']);
 
-%% MAKE DIFF RTB comp and REFoCUS 
+%% Make Difference Images: RTB comp and REFoCUS 
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,2)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
@@ -196,12 +202,13 @@ xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
 xlim([-20,20]);
+ylim([60,110]);
+
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
-% savefig(f,['./Figures/DIFF/REFoCUSminusRTBcomp_',tag,'.fig']);
-% saveas(f,['./Figures/DIFF/REFoCUSminusRTBcomp_',tag,'.png']);
+savefig(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.fig']);
+saveas(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.png']);
 
-%% MAKE DIFF RTB and REFoCUS 
-
+%% Make Difference Images: RTB and REFoCUS 
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,1)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
@@ -211,6 +218,8 @@ xlabel('x[mm]')
 ylabel('z[mm]')
 axis image
 xlim([-20,20]);
+ylim([60,110]);
+
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
-% savefig(f,['./Figures/DIFF/REFoCUSminusRTB_',tag,'.fig']);
-% saveas(f,['./Figures/DIFF/REFoCUSminusRTB_',tag,'.png']);
+savefig(f,[storefolder,'REFoCUSminusRTB_',tag,'.fig']);
+saveas(f,[storefolder,'REFoCUSminusRTB_',tag,'.png']);
