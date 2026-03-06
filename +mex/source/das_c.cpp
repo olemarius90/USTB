@@ -4,8 +4,8 @@
 #include <complex>
 #if defined(_WIN32)
 #include <ppl.h>           // Requires VS2010+
-#elif (defined (__unix__) || defined(__unix))
-#include <parallel_for.h>  // Requires Intel tbb
+#elif (defined (__unix__) || defined(__unix) || defined(__APPLE__))
+#include <tbb/parallel_for.h>  // Requires Intel tbb
 #endif
 
 // compulsory input
@@ -39,6 +39,7 @@
 #define BOTH 3
 
 #define VERSION "2.0.0" 
+// updated for apple silicon 2025-9-1 Sebastian Koranda
 // dasFast version 2022-06-21 Jorgen Avdal
 // Based on code by Alfonso Rodriguez-Molares
 
@@ -353,8 +354,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
 #if defined (_WIN32)
     Concurrency::parallel_for(0, P, [&](int pp) { // pixel loop -> WIN
-#elif (defined (__unix__) || defined(__unix))
-    tbb::strict_ppl::parallel_for(0, P, [&](int pp) { // pixel loop -> UNIX
+#elif (defined (__unix__) || defined(__unix) || defined(__APPLE__))
+    tbb::parallel_for(0, P, [&](int pp) { // pixel loop -> UNIX
 #endif
 
         for (int w = 0; w < W; w++) { // wave loop

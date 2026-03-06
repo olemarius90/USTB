@@ -24,7 +24,7 @@ try
      
         obj_ext = 'o';
 
-    elseif ~isempty(strfind(sys_str,'maci64'))
+    elseif ~isempty(strfind(sys_str,'maca64'))
         
         [main_ver, minor_ver, rev_ver] = get_gcc_version();
         
@@ -32,9 +32,9 @@ try
             error('Must have gcc version 4 or higher');
         end
         
-        d_flags=['-D_UNIX_ '];
-        c_flags='-I/usr/local/Cellar/tbb/2017_U5/include/tbb/';
-        ld_flags='-L/usr/local/Cellar/tbb/2017_U5/lib -ltbb';
+        d_flags=['-D_UNIX_'];
+        c_flags='-I/opt/homebrew/include';
+        ld_flags='-L/opt/homebrew/lib -ltbb';
      
         obj_ext = 'o';
         
@@ -42,7 +42,7 @@ try
         error('Only MAC, WINDOWS and LINUX is supported.');
     end
     
-    mex_str = ['mex ' d_flags ' ' c_flags ' ' ld_flags ' source' filesep filename '.cpp'];
+    mex_str = ['mex -R2018a ' d_flags ' ' c_flags ' ' ld_flags ' source' filesep filename '.cpp'];
     
     disp(mex_str)
     eval(mex_str);

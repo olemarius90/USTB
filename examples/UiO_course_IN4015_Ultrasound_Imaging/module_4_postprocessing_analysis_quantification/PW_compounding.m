@@ -177,6 +177,12 @@ end
 % single plane wave image and the three different compounding techniques and discuss the results.
 % The implementation to measure the CR is allready provided, but you have to calculate the CNR.
 %
+% NB! Remember that both the CR and CNR is estimated on the power of the beamformed signal, and
+% thus the mean is estimated as given in the code for the coherent compounding in the ROI region:
+% mean_ROI_coherent = mean(abs(coherent_compounding_signal(idx_ROI(:))).^2)
+% Be sure to also use the power of the signal when estimating the standard deviation for the CNR estimation,
+% and also remember that MATLAB has a built in function for standard deviation std().
+%
 % You need to make sure that you are running this on the contrast dataset.
 
 if contains(filename,'contrast')
