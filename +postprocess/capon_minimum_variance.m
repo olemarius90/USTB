@@ -75,8 +75,8 @@ classdef capon_minimum_variance < postprocess
                 
                 % transmit
                 if h.input.N_waves > 1
+                    h.transmit_apodization.probe=[];
                     h.transmit_apodization.sequence = h.channel_data.sequence;
-                    h.transmit_apodization.probe=h.channel_data.probe;
                     tx_apodization=h.transmit_apodization.data();
                 end
             else
@@ -179,8 +179,29 @@ classdef capon_minimum_variance < postprocess
                     else
                         idx = find(abs(squeeze(apod_matrix(k,e,:)))>h.active_element_criterium);
                         M_new = length(idx);        %Number of elements with actual data
+                        
+                        % Safety check: skip if not enough active elements
+                        if M_new < 2
+                            z(k,e) = sum(rf_data(k,:));  % fallback to simple sum
+                            continue;
+                        end
+                        
                         L_frac = h.L_elements/M;    %Fraction of full aperture to be used for subaperture
                         L_new = floor(L_frac*M_new);
+                        
+                        % Safety check: ensure valid subarray size
+                        if L_new < 1
+                            L_new = 1;
+                        elseif L_new >= M_new
+                            L_new = M_new - 1;
+                        end
+                        
+                        % Safety check: ensure valid loop bounds
+                        if idx(end) - L_new + 1 < idx(1)
+                            z(k,e) = sum(rf_data(k,:));  % fallback to simple sum
+                            continue;
+                        end
+                        
                         I_new = eye(L_new);
                         
                         %Estimate spatial covariance matrix

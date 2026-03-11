@@ -51,6 +51,7 @@ classdef das < midprocess
             w0=2*pi*modulation_frequency;
 
             % calculate transmit apodization according to 10.1109/TUFFC.2015.007183
+            h.transmit_apodization.probe=[];
             h.transmit_apodization.sequence=h.channel_data.sequence;
             h.transmit_apodization.focus=h.scan;
             tx_apodization=single(h.transmit_apodization.data);
@@ -111,6 +112,7 @@ classdef das < midprocess
                                                 error('Only linear scan and sector scan in 2D is supported for the unified spherical transmit delay model.');
                                             end
                                         end
+                                        mask_all_waves(isnan(mask_all_waves)) = 0;
                                         transmit_delay(:,n_wave) = tools.calculate_unified_delay_model(transmit_delay(:,n_wave),logical(mask_all_waves(:,:,n_wave)),...
                                                                             h.scan,h.channel_data.sequence(n_wave).source);
                                     case spherical_transmit_delay_model.hybrid

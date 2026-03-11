@@ -73,7 +73,9 @@ classdef apodization < uff
             h.origin=in_origin;
         end
         function set.probe(h,in_probe)
-            validateattributes(in_probe, {'uff.probe'}, {'scalar'})
+            if ~isempty(in_probe)
+                validateattributes(in_probe, {'uff.probe'}, {'scalar'})
+            end
             h.probe=in_probe;
         end
         function set.focus(h,in_scan)
