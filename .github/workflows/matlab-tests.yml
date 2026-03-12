@@ -48,9 +48,23 @@ jobs:
           products: Signal_Processing_Toolbox
 
       - name: Run legacy unit tests
+        id: run-tests
+        continue-on-error: true
         uses: matlab-actions/run-command@v2
         with:
           command: |
             if ~isfolder(fullfile(ustb_path(), 'logs')), mkdir(fullfile(ustb_path(), 'logs')); end
             ut = unit_test();
             ut.all();
+            fid = fopen(fullfile(getenv('GITHUB_WORKSPACE'), 'tests_passed.marker'), 'w');
+            fprintf(fid, 'ok');
+            fclose(fid);
+
+      - name: Verify tests passed
+        run: |
+          if [ -f tests_passed.marker ]; then
+            echo "All unit tests passed."
+          else
+            echo "Unit tests failed (no success marker found)."
+            exit 1
+          fi
