@@ -11,6 +11,15 @@ on:
       - '+preprocess/**'
       - '+tools/**'
       - '*.m'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '+uff/**'
+      - '+midprocess/**'
+      - '+postprocess/**'
+      - '+preprocess/**'
+      - '+tools/**'
+      - '*.m'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +53,7 @@ jobs:
           path: docs/_build/html
 
   deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     environment:
