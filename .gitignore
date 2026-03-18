@@ -26,3 +26,4 @@ log_*.txt
 !*.keep_this_folder_in_git
 *.eps
 *.m~
+docs/_build/
