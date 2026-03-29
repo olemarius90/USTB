@@ -5,7 +5,7 @@
 
 full_version = getenv('TOOLBOX_VERSION');
 if isempty(full_version)
-    full_version = 'dev';
+    full_version = '0.0.0-dev';
     fprintf('No TOOLBOX_VERSION set, using "%s"\n', full_version);
 else
     fprintf('Building USTB v%s\n', full_version);
