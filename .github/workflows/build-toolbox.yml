@@ -28,24 +28,21 @@ jobs:
 
       - name: Build toolbox
         uses: matlab-actions/run-command@v2
+        env:
+          TOOLBOX_VERSION: ${{ steps.version.outputs.version }}
         with:
-          command: |
-            version = '${{ steps.version.outputs.version }}';
-            fprintf('Setting USTB version to %s\n', version);
-            matlab.addons.toolbox.toolboxVersion('USTB.prj', version);
-            matlab.addons.toolbox.packageToolbox('USTB.prj');
-            fprintf('Toolbox packaged successfully: USTB.mltbx\n');
+          command: build_toolbox
 
       - name: Upload toolbox artifact
         uses: actions/upload-artifact@v4
         with:
           name: USTB-${{ steps.version.outputs.version }}
-          path: USTB.mltbx
+          path: USTB_v${{ steps.version.outputs.version }}.mltbx
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: USTB.mltbx
+          files: USTB_v${{ steps.version.outputs.version }}.mltbx
           name: USTB ${{ steps.version.outputs.version }}
           draft: false
           generate_release_notes: true
