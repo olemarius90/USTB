@@ -6,12 +6,9 @@ regardless of pixel ordering differences.
 """
 
 import os
-import sys
 import numpy as np
 import pytest
 import h5py
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 REF_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")

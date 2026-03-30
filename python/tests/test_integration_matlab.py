@@ -5,12 +5,9 @@ Run with: pytest tests/test_integration_matlab.py -v
 """
 
 import os
-import sys
 import numpy as np
 import pytest
 import h5py
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 REFERENCE_FILE = os.path.join(os.path.dirname(__file__), "matlab_reference.h5")
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data",

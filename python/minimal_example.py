@@ -16,12 +16,8 @@ the B-mode image. This mirrors the MATLAB code:
 """
 
 import os
-import sys
 import urllib.request
 import numpy as np
-
-# Add parent directory to path so we can import both ustb and pyuff_ustb
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pyuff_ustb.objects import ChannelData, SectorScan
 from ustb.enums import Dimension, Window

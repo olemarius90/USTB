@@ -1,11 +1,8 @@
 """Shared utilities for examples."""
 
 import os
-import sys
 import urllib.request
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 DATA_URL = "https://www.ustb.no/datasets/"
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data")
