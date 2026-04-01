@@ -79,7 +79,7 @@ jobs:
       - name: Publish examples to HTML
         uses: matlab-actions/run-command@v2
         continue-on-error: true
-        timeout-minutes: 60
+        timeout-minutes: 180
         env:
           DISPLAY: ':99'
         with:

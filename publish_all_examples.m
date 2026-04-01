@@ -44,7 +44,11 @@ skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segf
               'STAI_2D_array_cardiac.m', ...          % 3D simulation, very long runtime
               'STAI_2D_array_image_from_channeldata.m', ... % needs data from STAI_2D_array_cardiac
               'CPWC_2D_array_cardiac.m', ...          % 3D simulation, very long runtime
-              'setUpParpool.m'};                      % parpool helper, not an example
+              'setUpParpool.m', ...                   % parpool helper, not an example
+              'STAI_L11_speckle.m', ...               % Field II simulation, very slow
+              'STAI_L11_resolution_phantom.m', ...    % Field II simulation, very slow
+              'CPWC_L11_probe_sim.m', ...             % Field II simulation, very slow
+              'FI_elevation_profile.m'};              % Field II simulation, very slow
 
 all_m = dir(fullfile(examples_dir, '**', '*.m'));
 
