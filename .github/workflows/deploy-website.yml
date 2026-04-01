@@ -66,18 +66,27 @@ jobs:
         run: sphinx-build -b html docs website/api
 
       # --- MATLAB example publishing ---
-      - name: Install virtual display
-        run: sudo apt-get install -y xvfb
+      - name: Start virtual display
+        run: |
+          sudo apt-get install -y xvfb
+          Xvfb :99 -screen 0 1024x768x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
 
       - uses: matlab-actions/setup-matlab@v2
         with:
           products: Signal_Processing_Toolbox Image_Processing_Toolbox
 
       - name: Publish examples to HTML
+        uses: matlab-actions/run-command@v2
         continue-on-error: true
         timeout-minutes: 60
-        run: |
-          xvfb-run matlab -batch "addpath('/opt/field_ii'); publish_all_examples(fullfile(pwd,'website','examples'), true)"
+        env:
+          DISPLAY: ':99'
+        with:
+          command: addpath('/opt/field_ii'); publish_all_examples(fullfile(pwd,'website','examples'), true)
+
+      - name: Create examples dir if empty
+        run: mkdir -p website/examples
 
       # --- Generate examples index ---
       - name: Generate examples index page
