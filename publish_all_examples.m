@@ -1,4 +1,4 @@
-function publish_all_examples(output_root, eval_code)
+function publish_all_examples(output_root, eval_code, isolate)
 %PUBLISH_ALL_EXAMPLES Publish all USTB example scripts to HTML
 %
 %   publish_all_examples() publishes all .m files under examples/ to HTML
@@ -10,6 +10,10 @@ function publish_all_examples(output_root, eval_code)
 %   publish_all_examples(output_root, eval_code) controls whether code is
 %   executed (default: true). Set to false for a fast code-only pass.
 %
+%   publish_all_examples(output_root, eval_code, isolate) when isolate is
+%   true, runs each example in a separate MATLAB process to prevent
+%   segfaults from killing the entire batch (default: false).
+%
 %   After publishing, run generate_examples_index.py to create the index page.
 %
 %   See also PUBLISH
@@ -19,6 +23,9 @@ if nargin < 1
 end
 if nargin < 2
     eval_code = true;
+end
+if nargin < 3
+    isolate = false;
 end
 
 ustb_root = fileparts(mfilename('fullpath'));
@@ -30,9 +37,7 @@ skip_dirs = {'FLUST', ...             % needs MUST toolbox + edit() calls
              'verasonics', ...        % needs Verasonics hardware/data
              'alpinion', ...          % needs Alpinion hardware/data
              'acoustical_radiation_force_imaging', ... % needs hardware data
-             'legacy', ...            % student exercises with unimplemented code + k-Wave deps
-             fullfile('UiO_course_IN4015_Ultrasound_Imaging','module_6_sonar','utils'), ...
-             fullfile('UiO_course_IN4015_Ultrasound_Imaging','module_2_wave_physics'), ...
+             'UiO_course_IN4015_Ultrasound_Imaging', ... % course exercises, some hang in CI
              fullfile('field_II','3D_simulation'), ... % 3D Field II, very long runtime
              fullfile('field_II','functions')};         % helper functions, not examples
 
@@ -44,12 +49,19 @@ skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segf
               'STAI_2D_array_cardiac.m', ...          % 3D simulation, very long runtime
               'STAI_2D_array_image_from_channeldata.m', ... % needs data from STAI_2D_array_cardiac
               'CPWC_2D_array_cardiac.m', ...          % 3D simulation, very long runtime
-              'setUpParpool.m'};                      % parpool helper, not an example
+              'setUpParpool.m', ...                   % parpool helper, not an example
+              'STAI_L11_speckle.m', ...               % Field II simulation, very slow
+              'STAI_L11_resolution_phantom.m', ...    % Field II simulation, very slow
+              'CPWC_L11_probe_sim.m', ...             % Field II simulation, very slow
+              'FI_elevation_profile.m', ...              % Field II simulation, very slow
+              'MATLAB_intro.m'};                      % uses ginput(), hangs in headless CI
 
 all_m = dir(fullfile(examples_dir, '**', '*.m'));
 
 addpath(genpath(ustb_root));
 
+total_files = numel(all_m);
+fprintf('Found %d .m files in examples/\n', total_files);
 
 succeeded = {};
 failed = {};
@@ -79,7 +91,7 @@ for k = 1:numel(all_m)
     end
     if should_skip
         skipped{end+1} = src; %#ok<AGROW>
-        fprintf('[SKIP]  %s\n', strrep(src, [ustb_root filesep], ''));
+        fprintf('[SKIP]  (%d/%d) %s\n', k, total_files, strrep(src, [ustb_root filesep], ''));
         continue;
     end
 
@@ -96,19 +108,35 @@ for k = 1:numel(all_m)
     opts.createThumbnail = false;
     opts.maxOutputLines = Inf;
 
-    fprintf('[PUB]   %s ... ', strrep(src, [ustb_root filesep], ''));
-    original_dir = pwd;
-    try
-        cd(all_m(k).folder);
-        publish(src, opts);
-        fprintf('OK\n');
-        succeeded{end+1} = src; %#ok<AGROW>
-    catch me
-        fprintf('FAILED: %s\n', me.message);
-        failed{end+1} = src; %#ok<AGROW>
+    fprintf('[PUB]   (%d/%d) %s ... ', k, total_files, strrep(src, [ustb_root filesep], ''));
+
+    if isolate
+        % Run in a separate MATLAB process to isolate segfaults
+        matlab_bin = fullfile(matlabroot, 'bin', 'matlab');
+        cmd = sprintf('%s -batch "addpath(genpath(''%s'')); addpath(''/opt/field_ii''); cd(''%s''); opts.outputDir=''%s''; opts.format=''html''; opts.showCode=true; opts.evalCode=%s; opts.catchError=true; opts.createThumbnail=false; opts.maxOutputLines=Inf; publish(''%s'', opts);" 2>&1', ...
+            matlab_bin, ustb_root, all_m(k).folder, out_dir, mat2str(eval_code), src);
+        [status, output] = system(cmd);
+        if status == 0
+            fprintf('OK\n');
+            succeeded{end+1} = src; %#ok<AGROW>
+        else
+            fprintf('FAILED (exit %d)\n', status);
+            failed{end+1} = src; %#ok<AGROW>
+        end
+    else
+        original_dir = pwd;
+        try
+            cd(all_m(k).folder);
+            publish(src, opts);
+            fprintf('OK\n');
+            succeeded{end+1} = src; %#ok<AGROW>
+        catch me
+            fprintf('FAILED: %s\n', me.message);
+            failed{end+1} = src; %#ok<AGROW>
+        end
+        cd(original_dir);
+        close all;
     end
-    cd(original_dir);
-    close all;
 end
 
 fprintf('\n=== Summary ===\n');
