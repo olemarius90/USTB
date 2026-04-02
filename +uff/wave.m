@@ -87,22 +87,29 @@ classdef wave < uff
         end
 
         function fix_origin_from_source(h)
-            %FIX_ORIGIN_FROM_SOURCE Set origin from source for focused waves
+            %FIX_ORIGIN_FROM_SOURCE Set origin from source when not stored
             %
-            %   For focused imaging (spherical wavefront, source in front of
-            %   the transducer), sets origin to the source's lateral position
-            %   on the transducer surface (z=0). Call after reading from UFF
-            %   files that don't store origin.
+            %   For spherical waves (focused or diverging) where origin was
+            %   not explicitly stored in the UFF file (i.e. still at default
+            %   [0,0,0]), sets origin from the source position:
+            %     - Focused (source.z > 0): origin at source x,y with z=0
+            %     - Diverging (source.z < 0): origin at source x,y,z
+            %
+            %   This ensures correct scanline apodization and delay
+            %   calculations for RTB and diverging wave examples.
             %
             %   See also UFF.WAVE
             if h.wavefront == uff.wavefront.spherical ...
                     && isfinite(h.source.distance) ...
-                    && h.source.z > 0 ...
                     && all(h.origin.xyz == 0) ...
-                    && any(h.source.xyz(1:2) ~= 0)
+                    && any(h.source.xyz ~= 0)
                 h.origin.x = h.source.x;
                 h.origin.y = h.source.y;
-                h.origin.z = 0;
+                if h.source.z > 0
+                    h.origin.z = 0;
+                else
+                    h.origin.z = h.source.z;
+                end
             end
         end
     end
