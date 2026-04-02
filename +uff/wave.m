@@ -85,6 +85,26 @@ classdef wave < uff
                 h.apodization = uff.apodization();
             end
         end
+
+        function fix_origin_from_source(h)
+            %FIX_ORIGIN_FROM_SOURCE Set origin from source for focused waves
+            %
+            %   For focused imaging (spherical wavefront, source in front of
+            %   the transducer), sets origin to the source's lateral position
+            %   on the transducer surface (z=0). Call after reading from UFF
+            %   files that don't store origin.
+            %
+            %   See also UFF.WAVE
+            if h.wavefront == uff.wavefront.spherical ...
+                    && isfinite(h.source.distance) ...
+                    && h.source.z > 0 ...
+                    && all(h.origin.xyz == 0) ...
+                    && any(h.source.xyz(1:2) ~= 0)
+                h.origin.x = h.source.x;
+                h.origin.y = h.source.y;
+                h.origin.z = 0;
+            end
+        end
     end
     
     %% plot methods
