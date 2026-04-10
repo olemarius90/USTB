@@ -143,10 +143,11 @@ switch fn
 
     case 'FieldII_STAI_dynamic_range.uff'
         % publications/DynamicRange/process_simulation.m (DAS image with uniform FOV weights)
+        % Preview: same lateral/depth extent as the paper script but fewer pixels to avoid OOM.
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
-        scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 1024).', ...
-            'z_axis', linspace(6e-3, 52.5e-3, 2048).');
+        scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 512).', ...
+            'z_axis', linspace(6e-3, 52.5e-3, 1024).');
         mid = midprocess.das();
         mid.channel_data = channel_data;
         mid.scan = scan;
@@ -156,6 +157,7 @@ switch fn
         mid.transmit_apodization.window = uff.window.boxcar;
         mid.transmit_apodization.f_number = 1.75;
         b_data_tx = mid.go();
+        clear channel_data
         b_data_tx.data = b_data_tx.data + randn(size(b_data_tx.data)) * eps; % as in process_simulation.m
         [weights, ~, ~] = tools.uniform_fov_weighting(mid);
         das = postprocess.coherent_compounding();
@@ -253,10 +255,11 @@ switch fn
 
     case 'FieldII_STAI_axial_gradient_v2.uff'
         % publications/DynamicRange/process_simulation_only_axial_gradient.m (DAS with uniform FOV weights)
+        % Preview: subsampled z grid (same extent) to reduce memory.
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
         scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 512).', ...
-            'z_axis', linspace(8e-3, 55e-3, 2048).');
+            'z_axis', linspace(8e-3, 55e-3, 1024).');
         mid = midprocess.das();
         mid.channel_data = channel_data;
         mid.scan = scan;
@@ -266,6 +269,7 @@ switch fn
         mid.transmit_apodization.window = uff.window.boxcar;
         mid.transmit_apodization.f_number = 1.75;
         b_tx = mid.go();
+        clear channel_data
         b_tx.data = b_tx.data + randn(size(b_tx.data)) * eps;
         [weights, ~, ~] = tools.uniform_fov_weighting(mid);
         cc = postprocess.coherent_compounding();
@@ -276,10 +280,11 @@ switch fn
 
     case 'FieldII_STAI_gradient_full_field_100.uff'
         % publications/DynamicRange/process_simulation_full_gradient.m (DAS after compounding + weights)
+        % Preview: subsampled z grid (same extent) to reduce memory.
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
         scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 256).', ...
-            'z_axis', linspace(5e-3, 50e-3, 2048).');
+            'z_axis', linspace(5e-3, 50e-3, 1024).');
         mid = midprocess.das();
         mid.channel_data = channel_data;
         mid.scan = scan;
