@@ -17,6 +17,8 @@ function results = export_dataset_previews_to_website(varargin)
 %                          no trailing slash)
 %     'stop_on_error'    — default false
 %     'website_root'     — override path to repo root (default: ustb_path())
+%     'indices'          — optional row vector of 1-based indices into the registry
+%                          (default: all). Use to split export across runs and limit memory.
 %
 %   Tries several public URL bases if the first returns 404. Missing files get a
 %   gray stub PNG so the website still has one image per row.
@@ -28,6 +30,7 @@ p = inputParser;
 addParameter(p, 'url', 'https://www.ustb.no/datasets', @(s) ischar(s) || isstring(s));
 addParameter(p, 'stop_on_error', false, @islogical);
 addParameter(p, 'website_root', '', @(s) ischar(s) || isstring(s));
+addParameter(p, 'indices', [], @(x) isempty(x) || (isnumeric(x) && isvector(x) && all(x > 0)));
 parse(p, varargin{:});
 
 repo_root = fileparts(fileparts(fileparts(mfilename('fullpath'))));
@@ -52,6 +55,12 @@ if local_path(end) ~= filesep
 end
 
 T = uff_dataset_registry();
+idx = p.Results.indices;
+if ~isempty(idx)
+    idx = unique(round(idx(:)'));
+    idx = idx(idx <= numel(T));
+    T = T(idx);
+end
 n = numel(T);
 results = repmat(struct('filename', '', 'ok', false, 'message', '', 'png', ''), n, 1);
 
@@ -131,6 +140,7 @@ for i = 1:n
     results(i).png = png_path;
     results(i).message = 'ok';
     fprintf('[ OK ] %s -> %s\n', fn, png_path);
+    clear b_data
 end
 
 n_ok = sum([results.ok]);
