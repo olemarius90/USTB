@@ -84,7 +84,6 @@ switch fn
     case 'Alpinion_L3-8_FI_hypoechoic.uff'
         % examples/advanced_beamforming/FI_UFF_synthetic_TX_SLSC.m (DAS before switching to scanline TX)
         channel_data = uff.read_object(uff_file, '/channel_data');
-        channel_data.N_frames = 1;
         z_axis = linspace(0e-3, 60e-3, 750).';
         x_axis = zeros(channel_data.N_waves, 1);
         for n = 1:channel_data.N_waves
@@ -99,7 +98,10 @@ switch fn
         das.transmit_apodization.f_number = 4;
         das.receive_apodization.window = uff.window.tukey25;
         das.receive_apodization.f_number = 3;
-        b_data = das.go();
+        b_delayed = das.go();
+        cc = postprocess.coherent_compounding();
+        cc.input = b_delayed;
+        b_data = cc.go();
 
     case 'Alpinion_L3-8_CPWC_hyperechoic_scatterers.uff'
         % examples/uff/CPWC_UFF_Alpinion.m
@@ -394,7 +396,7 @@ switch fn
         % publications/TUFFC/.../Invivo_experiment_MLA.m (DAS with MLA pipeline)
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
-        if channel_data.N_frames >= 2
+        if size(channel_data.data, 4) >= 2
             channel_data.data = channel_data.data(:, :, :, 2);
         end
         MLA = 4;
@@ -406,8 +408,8 @@ switch fn
         pipe.scan = scan;
         pipe.channel_data = channel_data;
         pipe.transmit_apodization.window = uff.window.scanline;
-        pipe.transmit_apodization.MLA = 4;
-        pipe.transmit_apodization.MLA_overlap = 2;
+        pipe.transmit_apodization.MLA = [MLA, 1];
+        pipe.transmit_apodization.MLA_overlap = [2, 0];
         pipe.receive_apodization.window = uff.window.boxcar;
         pipe.receive_apodization.f_number = 1;
         das = midprocess.das();
