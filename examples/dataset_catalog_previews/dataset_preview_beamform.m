@@ -82,8 +82,24 @@ switch fn
         b_data = beamform_alpinion_fi(channel_data_from(uff_file));
 
     case 'Alpinion_L3-8_FI_hypoechoic.uff'
-        % examples/advanced_beamforming/FI_UFF_synthetic_TX_SLSC.m (same FI geometry as FI_UFF_Alpinion)
-        b_data = beamform_alpinion_fi(channel_data_from(uff_file));
+        % examples/advanced_beamforming/FI_UFF_synthetic_TX_SLSC.m (DAS before switching to scanline TX)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        channel_data.N_frames = 1;
+        z_axis = linspace(0e-3, 60e-3, 750).';
+        x_axis = zeros(channel_data.N_waves, 1);
+        for n = 1:channel_data.N_waves
+            x_axis(n) = channel_data.sequence(n).source.x;
+        end
+        scan = uff.linear_scan('x_axis', x_axis, 'z_axis', z_axis);
+        das = midprocess.das();
+        das.channel_data = channel_data;
+        das.dimension = dimension.transmit();
+        das.scan = scan;
+        das.transmit_apodization.window = uff.window.tukey25;
+        das.transmit_apodization.f_number = 4;
+        das.receive_apodization.window = uff.window.tukey25;
+        das.receive_apodization.f_number = 3;
+        b_data = das.go();
 
     case 'Alpinion_L3-8_CPWC_hyperechoic_scatterers.uff'
         % examples/uff/CPWC_UFF_Alpinion.m
@@ -100,7 +116,7 @@ switch fn
         b_data = mid.go();
 
     case 'FieldII_STAI_uniform_fov.uff'
-        % examples/uff/STAI_UFF_beamform_with_demodulation.m (demodulated branch)
+        % examples/uff/STAI_UFF_beamform_with_demodulation.m (demodulated IQ branch, right-hand figure)
         ch = uff.channel_data();
         if has_h5_dataset(uff_file, '/channel_data_speckle')
             ch.read(uff_file, '/channel_data_speckle');
@@ -124,7 +140,7 @@ switch fn
         b_data = mid.go();
 
     case 'FieldII_STAI_dynamic_range.uff'
-        % publications/DynamicRange/process_simulation.m (DAS image)
+        % publications/DynamicRange/process_simulation.m (DAS image with uniform FOV weights)
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
         scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 1024).', ...
@@ -138,9 +154,13 @@ switch fn
         mid.transmit_apodization.window = uff.window.boxcar;
         mid.transmit_apodization.f_number = 1.75;
         b_data_tx = mid.go();
+        b_data_tx.data = b_data_tx.data + randn(size(b_data_tx.data)) * eps; % as in process_simulation.m
+        [weights, ~, ~] = tools.uniform_fov_weighting(mid);
         das = postprocess.coherent_compounding();
         das.input = b_data_tx;
-        b_data = das.go();
+        b_data_das = das.go();
+        b_data_das.data = b_data_das.data .* weights(:);
+        b_data = b_data_das;
 
     case 'ARFI_dataset.uff'
         % examples/acoustical_radiation_force_imaging/ARFI_UFF_Verasonics.m
@@ -160,7 +180,7 @@ switch fn
     case {'PICMUS_experiment_resolution_distortion.uff', 'PICMUS_simulation_resolution_distortion.uff', ...
             'PICMUS_experiment_contrast_speckle.uff', 'PICMUS_simulation_contrast_speckle.uff', ...
             'PICMUS_carotid_cross.uff'}
-        % examples/picmus/experiment_resolution_distortion.m
+        % examples/picmus/experiment_resolution_distortion.m (and invivo_carotid_cross.m for carotid)
         channel_data = uff.read_object(uff_file, '/channel_data');
         scan = uff.read_object(uff_file, '/scan');
         pipe = pipeline();
@@ -170,9 +190,7 @@ switch fn
         pipe.receive_apodization.f_number = 1.7;
         pipe.transmit_apodization.window = uff.window.tukey50;
         pipe.transmit_apodization.f_number = 1.7;
-        das = midprocess.das();
-        das.code = code.matlab;
-        b_data = pipe.go({das postprocess.coherent_compounding});
+        b_data = pipe.go({midprocess.das postprocess.coherent_compounding});
 
     case 'Verasonics_P2-4_parasternal_long_subject_1.uff'
         % examples/advanced_beamforming/FI_UFF_short_lag_spatial_coherence.m (cardiac DAS)
@@ -232,7 +250,7 @@ switch fn
         b_data = mid.go();
 
     case 'FieldII_STAI_axial_gradient_v2.uff'
-        % publications/DynamicRange/process_simulation_only_axial_gradient.m
+        % publications/DynamicRange/process_simulation_only_axial_gradient.m (DAS with uniform FOV weights)
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
         scan = uff.linear_scan('x_axis', linspace(-20e-3, 20e-3, 512).', ...
@@ -246,9 +264,13 @@ switch fn
         mid.transmit_apodization.window = uff.window.boxcar;
         mid.transmit_apodization.f_number = 1.75;
         b_tx = mid.go();
+        b_tx.data = b_tx.data + randn(size(b_tx.data)) * eps;
+        [weights, ~, ~] = tools.uniform_fov_weighting(mid);
         cc = postprocess.coherent_compounding();
         cc.input = b_tx;
-        b_data = cc.go();
+        b_das = cc.go();
+        b_das.data = b_das.data .* weights(:);
+        b_data = b_das;
 
     case 'FieldII_STAI_gradient_full_field_100.uff'
         % publications/DynamicRange/process_simulation_full_gradient.m (DAS after compounding + weights)
@@ -311,18 +333,9 @@ switch fn
         b_data = pipe.go({midprocess.das() postprocess.coherent_compounding()});
 
     case 'test02.uff'
-        % examples/uff/CPWC_UFF_read.m — uses scan from file
+        % examples/uff/CPWC_UFF_read.m — beamforming uses /scan from file (same as stored b_data)
         channel_data = uff.read_object(uff_file, '/channel_data');
-        try
-            scan = uff.read_object(uff_file, '/scan');
-        catch
-            scan = [];
-        end
-        if isempty(scan) || ~(isa(scan, 'uff.linear_scan') || isa(scan, 'uff.sector_scan'))
-            scan = uff.linear_scan();
-            scan.x_axis = linspace(channel_data.probe.x(1), channel_data.probe.x(end), 256).';
-            scan.z_axis = linspace(0, 50e-3, 256).';
-        end
+        scan = uff.read_object(uff_file, '/scan');
         mid = midprocess.das();
         mid.dimension = dimension.both;
         mid.channel_data = channel_data;
@@ -336,6 +349,7 @@ switch fn
     case 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'
         % publications/.../Correction_of_simulated_blockage.m (RTB block)
         channel_data = uff.read_object(uff_file, '/channel_data');
+        channel_data.data = channel_data.data ./ max(channel_data.data(:));
         depth_axis = linspace(0e-3, 110e-3, 512).';
         azimuth_axis = zeros(channel_data.N_waves, 1);
         for n = 1:channel_data.N_waves
@@ -476,7 +490,7 @@ switch fn
         b_data = pipe.go({das});
 
     case 'FieldII_CPWC_point_scatterers_res_v2.uff'
-        % publications/IUS2020/.../process_CPWC_L7_4_probe_point_scatter.m
+        % publications/IUS2020/.../process_CPWC_L7_4_probe_point_scatter.m (DAS only, no compounding)
         channel_data = uff.channel_data();
         channel_data.read(uff_file, '/channel_data');
         sca = uff.linear_scan('x_axis', linspace(-3e-3, 3e-3, 512).', ...
