@@ -20,7 +20,13 @@ function download(file, url, local_path)
 % with old examples
 if nargin > 2 
     path = local_path;  % The third argument used to be the path
-    url = [url, '/', file]; % The URL now needs to include the file name
+    % Strip trailing slash from base URL so we do not produce .../datasets//file.uff
+    % (some servers return 404 for the double slash, e.g. GitHub Actions).
+    base = url;
+    while ~isempty(base) && base(end) == '/'
+        base = base(1:end-1);
+    end
+    url = [base, '/', file]; % The URL now needs to include the file name
     file = fullfile(path, [name, ext]); % The file need to have the full path 
                                         % to be saved correctly later
 end
