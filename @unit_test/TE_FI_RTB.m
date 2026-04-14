@@ -4,7 +4,9 @@ function ok = TE_FI_RTB(h)
 % compares it with previously beamformed data (USTB develop before merge Feb 2020)
 % Author Ole Marius Hoel Rindal (olemarius@olemarius.net)
 
-% data location (L7 on Zenodo; reference bundle still from ustb.no)
+% Two different files (two downloads if missing; tools.download skips if present):
+%   - L7_FI_IUS2018.uff from Zenodo (test input)
+%   - reference_RTB_data.uff from ustb.no only (regression bundle; not on Zenodo)
 url_zenodo = tools.zenodo_dataset_files_base();
 url_ustb = 'https://www.ustb.no/datasets/';
 filename='L7_FI_IUS2018.uff';
