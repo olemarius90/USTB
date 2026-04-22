@@ -4,8 +4,7 @@
 %
 % A. E. Vrålstad, S.-E. Måsøy, T. G. Bjåstad, A. R. Sørnes and O. M. H. Rindal,
 % "Retrospective transmit correction of blocked arrays applied to cardiac
-% ultrasound imaging," IEEE Trans. Ultrason., Ferroelect., Freq. Control,
-% short paper (TUSON 2026, to appear).
+% ultrasound imaging," IEEE Trans. Ultrason. (T-USON) (to appear).
 %
 % This script creates Figs. 3-4 in the paper.
 %
