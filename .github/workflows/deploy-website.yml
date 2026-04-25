@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
     paths:
+      - '.github/workflows/deploy-website.yml'
       - 'website/**'
       - 'docs/**'
       - 'examples/**'
@@ -17,6 +18,7 @@ on:
       - 'publish_publications.sh'
   pull_request:
     paths:
+      - '.github/workflows/deploy-website.yml'
       - 'website/**'
       - 'docs/**'
       - 'examples/**'
