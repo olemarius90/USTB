@@ -38,16 +38,8 @@ if ! command -v matlab &> /dev/null; then
 fi
 
 echo "Publishing (evalCode)..."
-matlab -nodisplay -batch "
-    addpath(genpath('${SCRIPT_DIR}'));
-    src = fullfile('${SCRIPT_DIR}', '${SRC_M}');
-    out = fullfile('${OUTPUT_DIR}', '${VRALSTAD_REL}');
-    if ~isfile(src), error('Missing %s', src); end
-    opts = struct('outputDir', out, 'format', 'html', 'showCode', true, ...
-        'evalCode', true, 'catchError', true, 'createThumbnail', false, ...
-        'maxOutputLines', inf);
-    publish(src, opts);
-" 2>&1 | tee publish_publications.log
+# Single line: multiline -batch strings break when the shell closes quotes early
+matlab -nodisplay -batch "addpath(genpath('${SCRIPT_DIR}')); src = fullfile('${SCRIPT_DIR}','${SRC_M}'); out = fullfile('${OUTPUT_DIR}','${VRALSTAD_REL}'); if ~isfile(src), error('Missing %%s', src); end; opts = struct('outputDir',out,'format','html','showCode',true,'evalCode',true,'catchError',true,'createThumbnail',false,'maxOutputLines',inf); publish(src, opts);" 2>&1 | tee publish_publications.log
 
 # Drop broken publishes (same idea as publish_examples.sh)
 echo ""

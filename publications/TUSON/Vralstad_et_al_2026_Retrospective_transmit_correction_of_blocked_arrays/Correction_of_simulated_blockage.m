@@ -15,8 +15,14 @@
 % Authors: Anders E. Vrålstad, Ole Marius Høel Rindal
 %% Clear environment
 clear all; close all;
-% Headless / publish / CI: no interactive ROI drawing; no demod figure
+% Headless / publish / CI: no interactive ROI drawing; no demod figure; no UI on plots
+% (uicontrols break publish/print; multi-frame + figure parent calls add_buttons in uff.plot)
 headless = ~usejava('desktop');
+if exist('batchStartupOptionUsed', 'file') == 2
+    try, headless = headless | batchStartupOptionUsed; catch, end %#ok<CTCH>
+end
+% Axes parent avoids uff.beamformed_data.add_buttons (publish snapshot fails on uicontrols)
+if headless, plotpar = @() axes(figure('Visible', 'off')); else, plotpar = @() []; end
 %% Load data
 % Read the data; download if missing (USTB example datasets on Zenodo)
 url = tools.zenodo_dataset_files_base();
@@ -75,11 +81,11 @@ mid.transmit_apodization.f_number=Fnumber;
 mid.transmit_apodization.minimum_aperture = 3e-3;
 b_data_RTB = mid.go();
 b_data_RTB.frame_rate = 20;
-b_data_RTB.plot([], 'RTB');
+b_data_RTB.plot(plotpar(), 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights no shift'],[],'none');
+b_data_tx_apod.plot(plotpar(),['Tx Weights no shift'],[],'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -100,11 +106,11 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-b_data_RTB_comp.plot([],'Proposed RTB');
+b_data_RTB_comp.plot(plotpar(),'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights with shift'],[],'none');
+b_data_tx_apod.plot(plotpar(),['Tx Weights with shift'],[],'none');
 colormap default;
 %% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
@@ -127,28 +133,29 @@ mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-b_data_delayed_REFoCUS.plot([],'REFoCUS');
+b_data_delayed_REFoCUS.plot(plotpar(),'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
-b_data_REFoCUS.plot();
+b_data_REFoCUS.plot(plotpar());
 
 %% Save PNGs
 f = figure;
-b_data_RTB.plot(f,'RTB');
+if headless, set(f, 'Visible', 'off'); end
+b_data_RTB.plot(axes(f),'RTB');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_', tag,'.png']);
 
-b_data_RTB_comp.plot(f,'RTB Compensated');
+b_data_RTB_comp.plot(axes(f),'RTB Compensated');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_compensated_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_compensated_', tag,'.png']);
 
 
-b_data_REFoCUS.plot(f,'REFoCUS');
+b_data_REFoCUS.plot(axes(f),'REFoCUS');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20])
 savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
@@ -164,11 +171,16 @@ all_images = squeeze(b_data_compare.get_image());
 b_data_compare.data(:,1,1,2) = b_data_compare.data(:,1,1,2) .* median(all_images(:,:,1)./all_images(:,:,2),'all','omitnan');
 b_data_compare.data(:,1,1,3) = b_data_compare.data(:,1,1,3) .* median(all_images(:,:,1)./all_images(:,:,3),'all','omitnan');
 b_data_compare.frame_rate = 1;
-b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20]);
-b_data_compare.frame_rate = 1;
-b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+% GIF needs getframe() — not available in -batch; skip in headless
+if headless
+    fprintf('[Correction_of_simulated_blockage] Skipping Comparison GIF (headless / batch).\n');
+else
+    b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
+    rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
+    clim([-60 0]);xlim([-20 20]);
+    b_data_compare.frame_rate = 1;
+    b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+end
 
 
 %% Measure contrast (interactive drawrectangle; skipped in headless publish/CI)
