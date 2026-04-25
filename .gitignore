@@ -25,6 +25,13 @@ log_*.txt
 !window.png
 !website/assets/images/datasets/*.png
 !*.keep_this_folder_in_git
+# Populated at deploy from examples-v1 release (examples-html + publications-html tarballs)
+website/examples/
+
+# Local output from publish_publications.sh
+publications_html/
+publications-html.tar.gz
+publish_publications.log
 *.eps
 *.m~
 docs/_build/

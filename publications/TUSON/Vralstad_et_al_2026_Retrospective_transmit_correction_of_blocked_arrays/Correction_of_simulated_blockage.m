@@ -2,23 +2,31 @@
 %
 % Creating the simulated results in the paper:
 %
-% A.E. Vrålstad, S.-E. Måsøy, T.G. Bjåstad, A.R. Sørnes and O.M.H. Rindal,
+% A. E. Vrålstad, S.-E. Måsøy, T. G. Bjåstad, A. R. Sørnes and O. M. H. Rindal,
 % "Retrospective transmit correction of blocked arrays applied to cardiac
-% ultrasound imaging" in XX. doi:YY.ZZZZ/XX.QQQQQQQQ.
+% ultrasound imaging," IEEE Trans. Ultrason. (T-USON) (to appear).
 %
-% This script creates Fig.3-4 in the paper. 
+% This script creates Figs. 3-4 in the paper.
 %
-% This code uses the UltraSound ToolBox (USTB) and you'll need to download 
-% it first to successfully rund this code. To know more about the USTB 
-% visit http://www.ustb.no/
+% This code uses the UltraSound ToolBox (USTB). Clone or add USTB to the
+% MATLAB path before running. See <https://github.com/unioslo/USTB> and
+% the project website.
 %
-% by Anders E. Vrålstad and Ole Marius Hoel Rindal
+% Authors: Anders E. Vrålstad, Ole Marius Høel Rindal
 %% Clear environment
 clear all; close all;
+% Headless / publish / CI: no interactive ROI drawing; no demod figure; no UI on plots
+% (uicontrols break publish/print; multi-frame + figure parent calls add_buttons in uff.plot)
+headless = ~usejava('desktop');
+if exist('batchStartupOptionUsed', 'file') == 2
+    try, headless = headless | batchStartupOptionUsed; catch, end %#ok<CTCH>
+end
+% Axes parent avoids uff.beamformed_data.add_buttons (publish snapshot fails on uicontrols)
+if headless, plotpar = @() axes(figure('Visible', 'off')); else, plotpar = @() []; end
 %% Load data
-% Read the data, poentitally download it
-url='http://ustb.no/datasets/';      % if not found downloaded from here
-local_path = [ustb_path(),'/data/']; % location of example data
+% Read the data; download if missing (USTB example datasets on Zenodo)
+url = tools.zenodo_dataset_files_base();
+local_path = [ustb_path(), '/data/'];
 addpath(local_path);
 
 % Choose dataset
@@ -61,7 +69,11 @@ mid=midprocess.das();
 mid.channel_data=channel_data;
 mid.dimension = dimension.both();
 mid.scan=scan;
-mid.code = code.mex;
+if isempty(which('das_c'))
+    mid.code = code.matlab;
+else
+    mid.code = code.mex;
+end
 mid.receive_apodization.window=uff.window.boxcar;
 mid.receive_apodization.f_number=1.7;
 mid.transmit_apodization.window=uff.window.hamming;
@@ -69,11 +81,11 @@ mid.transmit_apodization.f_number=Fnumber;
 mid.transmit_apodization.minimum_aperture = 3e-3;
 b_data_RTB = mid.go();
 b_data_RTB.frame_rate = 20;
-b_data_RTB.plot([], 'RTB');
+b_data_RTB.plot(plotpar(), 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights no shift'],[],'none');
+b_data_tx_apod.plot(plotpar(),['Tx Weights no shift'],[],'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -94,51 +106,56 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-b_data_RTB_comp.plot([],'Proposed RTB');
+b_data_RTB_comp.plot(plotpar(),'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights with shift'],[],'none');
+b_data_tx_apod.plot(plotpar(),['Tx Weights with shift'],[],'none');
 colormap default;
 %% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
 demod.modulation_frequency = 2.5*10^6;
 demod.input = channel_data_REFoCUS;
-demod.plot_on = true;
+demod.plot_on = ~headless;
 channel_data_STAI_demod = demod.go();
 %% REFoCUS Beamforming
 mid_REFoCUS = midprocess.das();
 mid_REFoCUS.channel_data=channel_data_STAI_demod;
 mid_REFoCUS.dimension = dimension.receive();
 mid_REFoCUS.scan=scan;
-mid_REFoCUS.code = code.mex;
+if isempty(which('das_c'))
+    mid_REFoCUS.code = code.matlab;
+else
+    mid_REFoCUS.code = code.mex;
+end
 mid_REFoCUS.transmit_apodization.window=uff.window.boxcar;
 mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-b_data_delayed_REFoCUS.plot([],'REFoCUS');
+b_data_delayed_REFoCUS.plot(plotpar(),'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
-b_data_REFoCUS.plot();
+b_data_REFoCUS.plot(plotpar());
 
 %% Save PNGs
 f = figure;
-b_data_RTB.plot(f,'RTB');
+if headless, set(f, 'Visible', 'off'); end
+b_data_RTB.plot(axes(f),'RTB');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_', tag,'.png']);
 
-b_data_RTB_comp.plot(f,'RTB Compensated');
+b_data_RTB_comp.plot(axes(f),'RTB Compensated');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_compensated_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_compensated_', tag,'.png']);
 
 
-b_data_REFoCUS.plot(f,'REFoCUS');
+b_data_REFoCUS.plot(axes(f),'REFoCUS');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20])
 savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
@@ -154,28 +171,37 @@ all_images = squeeze(b_data_compare.get_image());
 b_data_compare.data(:,1,1,2) = b_data_compare.data(:,1,1,2) .* median(all_images(:,:,1)./all_images(:,:,2),'all','omitnan');
 b_data_compare.data(:,1,1,3) = b_data_compare.data(:,1,1,3) .* median(all_images(:,:,1)./all_images(:,:,3),'all','omitnan');
 b_data_compare.frame_rate = 1;
-b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20]);
-b_data_compare.frame_rate = 1;
-b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+% GIF needs getframe() — not available in -batch; skip in headless
+if headless
+    fprintf('[Correction_of_simulated_blockage] Skipping Comparison GIF (headless / batch).\n');
+else
+    b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
+    rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
+    clim([-60 0]);xlim([-20 20]);
+    b_data_compare.frame_rate = 1;
+    b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+end
 
 
-%% Measure contrast
-[RTB_sc, Xs,Zs] = tools.scan_convert(b_data_RTB.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
-[RTB_comp_sc, Xs,Zs] = tools.scan_convert(b_data_RTB_comp.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
-[REFoCUS_sc, Xs,Zs] = tools.scan_convert(b_data_REFoCUS.get_image()-12,b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
-img_cell = {RTB_sc,RTB_comp_sc,REFoCUS_sc};
-name_cell = {'RTB','RTB Compensated', 'REFoCUS'};
-das_handle = figure(); imagesc(Xs,Zs,img_cell{3});
+%% Measure contrast (interactive drawrectangle; skipped in headless publish/CI)
+if ~headless
+    [RTB_sc, Xs,Zs] = tools.scan_convert(b_data_RTB.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
+    [RTB_comp_sc, Xs,Zs] = tools.scan_convert(b_data_RTB_comp.get_image(),b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
+    [REFoCUS_sc, Xs,Zs] = tools.scan_convert(b_data_REFoCUS.get_image()-12,b_data_compare.scan.azimuth_axis,b_data_compare.scan.depth_axis, 1024,1024);
+    img_cell = {RTB_sc,RTB_comp_sc,REFoCUS_sc};
+    name_cell = {'RTB','RTB Compensated', 'REFoCUS'};
+    das_handle = figure(); imagesc(Xs,Zs,img_cell{3});
 
 
-center_rectangle = [-0.006,0.07,0.007,0.04];
-v1_area =drawrectangle('Position',center_rectangle-[0.008,0,0,0]);
-v2_area =drawrectangle('Position',center_rectangle+[0.008,0,0,0]);
-c_area =drawrectangle('Position',center_rectangle);
+    center_rectangle = [-0.006,0.07,0.007,0.04];
+    v1_area =drawrectangle('Position',center_rectangle-[0.008,0,0,0]);
+    v2_area =drawrectangle('Position',center_rectangle+[0.008,0,0,0]);
+    c_area =drawrectangle('Position',center_rectangle);
 
-[GCNR, v1_binary, v2_binary, c_binary] = contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 60,storefolder,c_area,v1_area,v2_area);
+    [GCNR, v1_binary, v2_binary, c_binary] = contrast_calc_insilico(img_cell,name_cell, Xs, Zs, das_handle, 60,storefolder,c_area,v1_area,v2_area);
+else
+    fprintf('[Correction_of_simulated_blockage] Skipping interactive gCNR (headless run).\n');
+end
 
 %% Make Difference Images: of RTBs
 all_images = b_data_compare.get_image();
