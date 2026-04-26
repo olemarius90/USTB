@@ -1,27 +1,33 @@
 classdef Fourier_beamforming < midprocess
 
-    %   Implementation of Fourier-domain beamforming for STAI channel data, also known as full-matrix capture (FMC)
+    %   Implementation of Fourier-domain beamforming for STAI channel data,
+    %   also known as full-matrix capture (FMC). This implementation supports
+    %   both the conventional Wavenumber Algorithm (WA) and the
+    %   Delay-and-Sum Consistent Wavenumber Algorithm (DCWA).
     %
-    %   authors:    Sufayan Mulani <sufayanm@uio.no>
+    %   For further details on DCWA, see:
+    %   S. Mulani, M. S. Ziksari, A. Austeng, and S. P. Näsholm,
+    %   "Delay-and-Sum Consistent Wavenumber Algorithm," IEEE Transactions on
+    %   Ultrasonics, doi: 10.1109/TUSON.2026.3667456.
     %
-    %   $Last updated: 01/03/2026$
+    %   author:    Sufayan Mulani <sufayanm@uio.no>
 
     %% Additional properties
     properties
-        refocus = false ;          % If true: recover FMC prior to beamforming (for non-FMC data)
-        spatial_padding = 2;       % Zero-padding factor in aperture dimensions
-        temporal_padding = 2;      % Zero-padding factor in time
-        temp_origin = 0;           % Temporal origin shift [m] used to center time axis
-        z_lim = 1.5 ;              % z-limit factor to define kz-grid extent relative to scan depth
-        USTB_scan = true ;         % If true: interpolate reconstructed image onto provided scan grid
-        angle_apodization = [] ;   % Angular cutoff (deg)
-        DAS_consistent = true ;    % Flag indicating DCWA mode (currently implemented via mult_factor + z scaling)
+        refocus           = false ; % If true: recover FMC prior to beamforming (for non-FMC data)
+        spatial_padding   = 2;      % Zero-padding factor in aperture dimensions
+        temporal_padding  = 2;      % Zero-padding factor in time
+        temp_origin       = 0;      % Temporal origin shift [m] used to center time axis
+        z_lim             = 1.5 ;   % z-limit factor to define kz-grid extent relative to scan depth
+        USTB_scan         = true ;  % If true: interpolate reconstructed image onto provided scan grid
+        angle_apodization = [] ;    % Angular cutoff (deg)
+        DAS_consistent    = true ;  % Flag indicating DCWA mode (currently implemented via mult_factor + z scaling)
     end
 
     %% Constructor
     methods (Access = public)
         function h=Fourier_beamforming()
-            h.name='Fourier beamformer';
+            h.name='WA';
             h.reference= ['Mulani, S., Ziksari, M. S., Austeng, A., & Näsholm, ' ...
                 'S. P. (2026). Delay-and-Sum Consistent Wavenumber Algorithm. ' ...
                 'IEEE Transactions on Ultrasonics.'];
@@ -39,17 +45,20 @@ classdef Fourier_beamforming < midprocess
                 beamformed_data= h.beamformed_data;
                 return;
             end
+            if h.DAS_consistent
+                h.name = 'DCWA' ;
+            end
+            if h.refocus
+                h.name = [h.name, ' + ReFocus'] ;
+            end
 
             %% Define input data and acquisition parameters
-
             SIG   = single(h.channel_data.data(:, :, :, 1)) ;
+            [N_sample, N_elements, N_waves] = size(SIG);
 
             fs    = h.channel_data.sampling_frequency; % Sampling frequency [Hz]
             pitch = h.channel_data.probe.pitch ;       % Element pitch [m]
             c0    = h.channel_data.sound_speed ;       % Sound speed [m/s]
-
-            [N_sample, N_elements, N_waves] = size(SIG);
-
             w0 = 2*pi*h.channel_data.modulation_frequency ;  % modulation frequency for IQ data
 
             t0 = zeros(N_waves, 1) ;  % Time offset per transmit wave
@@ -58,10 +67,7 @@ classdef Fourier_beamforming < midprocess
             end
 
             %% Zero-padding sizes
-
             ntFFT = h.temporal_padding*N_sample + round(max(t0*fs)) ;
-
-
             if rem(ntFFT,2)==1 % ntFFT is made even for symmetric FFT grids
                 ntFFT = ntFFT+1;
                 warning('Zero padding should be an even number. Temporal padding is updated to %2.0f', ntFFT)
@@ -71,27 +77,23 @@ classdef Fourier_beamforming < midprocess
 
             % Spatial FFT size. Used for both k_u and k_v grids.
             nxFFT = ceil(h.spatial_padding*N_elements); % used to mitigate lateral edge effects
-
             if rem(nxFFT,2)==1 % nxFFT is made even for symmetric FFT grids
                 nxFFT = nxFFT+1;
                 warning('Zero padding should be an even number. Spatial padding is updated to %2.0f', ntFFT)
             end
-
             if rem(nxFFT-N_elements, 2)==1
                 error('Please make (nxFFT-N_elements) an even number (By making N_elements even)')
             end
-
             nyFFT = nxFFT ;
 
             %% Define spectral grids (kx, kz, ku, kv, k)
-
             % The migration maps spectral samples from (k, kv, ku) to (kx, kz).
             % Here, (kv, ku) come from spatial FFTs and k = w/c0 from temporal FFT of the channel data.
 
             % Oversize factors for kx/kz grids relative to ku and k grids
             grd_size_x = 2 ;
             grd_size_z = 2 ;
-            % The stolt mapping for FMC is defined as kx = ku + kv;  kz = sqrt(k^2 - ku^2) + sqrt(k^2 - kv^2);
+            % The stolt mappaing for FMC is defined as kx = ku + kv;  kz = sqrt(k^2 - ku^2) + sqrt(k^2 - kv^2);
             % we get, min(2*ku)<= kx <= max(2*ku) and min(2*k)<= kz <= max(2*k)
             % Hence, grd_size_x=grd_size_z should be equal to 2 to cover the
             % entire frequency range. However, smaller factor can be chosen
@@ -120,15 +122,13 @@ classdef Fourier_beamforming < midprocess
             [KXX, ~] = meshgrid(kx, kz) ;
 
             % Define channel data grid
-            kv = 2*pi*((0:nxFFT-1) - floor(nxFFT/2))/pitch/nxFFT;       % Receiving element
-            f_shifted = (((0:ntFFT-1) - floor(ntFFT/2)).')*2*pi*fs/ntFFT + w0 ;
+            kv = 2*pi*((0:nxFFT-1) - floor(nxFFT/2))/pitch/nxFFT;  % receiver wavenumber 
+            f_shifted = (((0:ntFFT-1) - floor(ntFFT/2)).')*2*pi*fs/ntFFT + w0;  % temporal wavenumber
             [kv_mat, k_mat] = meshgrid(kv, f_shifted/c0) ;
-
-            ku = single(2*pi*reshape(((0:nyFFT-1) - floor(nyFFT/2)), 1, 1, [])/pitch/nyFFT);  % transmit element (Shifted according to MATLAB fft algorithm)
+            ku = single(2*pi*reshape(((0:nyFFT-1) - floor(nyFFT/2)), 1, 1, [])/pitch/nyFFT);  % transmiter wavenumber
 
             % Compute migrated fequency
             kmig = find_kmig(h, kz, kx, ku) ;
-
             tools.check_memory(prod([length(kz), length(kx), nyFFT, 8]));
 
             if h.DAS_consistent
@@ -137,8 +137,7 @@ classdef Fourier_beamforming < midprocess
 
                 % DCWA weighting factor
                 % This multiplier (plus the later z-scaling in spatial domain)
-                % corresponds to the correction derived to obtain
-                % DAS-consistent output.
+                % corresponds to the correction derived to obtain DAS-consistent output.
                 mult_factor = kmig./(sqrt(ku_z_mig.*kv_z_mig).*(ku_z_mig + kv_z_mig)) ;
 
                 % Remove evanescent waves
@@ -165,11 +164,11 @@ classdef Fourier_beamforming < midprocess
             SIG = fft(SIG, ntFFT) ;
 
             %% Adjusting temporal origin
-
             t_shift = round(2*h.temp_origin/c0*fs) ;   %% Index shift used to move temporal origin
 
             if h.refocus
-                % Use REFoCUS to refocus the channel data recorded using any arbitrary transmit scheme into a STAI channel data.
+                % Use REFoCUS to refocus the channel data recorded using any 
+                % arbitrary transmit scheme into a STAI channel data.
 
                 %   Bottenus, N. (2018). Recovery of the Complete Data Set from Focused Transmit
                 %   Beams. IEEE Transactions on Ultrasonics, Ferroelectrics, and Frequency Control,
@@ -182,13 +181,11 @@ classdef Fourier_beamforming < midprocess
                     delays(aa, :) = h.channel_data.sequence(aa).delay_values - t0(aa) + (t_shift/fs);
                     apod_val(aa, :) = h.channel_data.sequence(aa).apodization_values  ;
                 end
-
                 if N_waves==N_elements
                     warning('ReFocus is implemented before the beamformer. Make sure it is necessary')
                 end
                 % Apply refocusing in frequency domain
                 SIG = ReFocus_in_freq_domain(h, SIG, ntFFT, N_elements, fftshift(f_shifted), delays, apod_val) ;
-
             else
                 if N_waves~=N_elements || h.channel_data.sequence(1).source.z~=0
                     error('This is not a full matrix data. You should use ReFocus before the wavenumber algorithm.')
@@ -198,7 +195,6 @@ classdef Fourier_beamforming < midprocess
                 for bb=1:N_waves
                     t0(bb) = t0(bb) - h.channel_data.probe.r(bb)/c0  ;
                 end
-
                 t0 = reshape(t0, 1,1,N_waves) ;
                 dt = zeros(1, N_elements) ;
 
@@ -207,26 +203,20 @@ classdef Fourier_beamforming < midprocess
                 SIG = SIG.*exp(-1i*tmp) ;
             end
 
-
             %% Spatial FFT of data
-
-            fprintf('Taking spatial fft. ')
             SIG = cat(2, zeros(ntFFT, (nxFFT-N_elements)/2, N_elements), SIG, zeros(ntFFT, (nxFFT-N_elements)/2, N_elements)) ;  % To reconstruct the region outside aperture
             SIG = fft(fftshift(single(SIG), 2), [], 2) ;
             SIG = cat(3, zeros(ntFFT, nxFFT, (nyFFT-N_elements)/2), SIG, zeros(ntFFT, nxFFT, (nyFFT-N_elements)/2)) ;
             SIG = fft(fftshift(SIG, 3), [], 3) ;
-
             SIG = fftshift(SIG) ;
 
             %% Angular Apodization/ Evanscent waves removal
-
             if ~isempty(h.angle_apodization) && h.angle_apodization < 90
-                % Compute the receive and transmit angles
+                % Compute the receive and transmit angles.
                 % These angles are used to construct an angular apodization mask
-                % applied to the channel data.
-
-                % The angles are computed using the far-field
-                % relationships transmit angle = sin−1 (𝑘𝑢/𝑘) and receive angle = sin−1 (𝑘𝑣 /𝑘)
+                % applied to the channel data. The angles are computed 
+                % using the far-field relationships :-
+                % transmit angle = sin−1 (𝑘𝑢/𝑘) and receive angle = sin−1 (𝑘𝑣 /𝑘)
                 taper_mask = taper_window(h, ku, kv, f_shifted/c0, "tukey", 0.25) ;
                 SIG = SIG.*taper_mask ;
                 SIG(abs(f_shifted/c0) < abs(ku) | abs(f_shifted/c0) < abs(kv)) = 0;    % Evanscent waves
@@ -238,7 +228,7 @@ classdef Fourier_beamforming < midprocess
             %% Migrating the data to the image coordinates
             % For each transmit-wavenumber frame (ku), interpolate from the
             % sampled (kv,k) grid to the desired (kvmig,kmig) samples:
-            %   kvmig = k_x - k_u
+            % kvmig = k_x - k_u
 
             migSIG = zeros(length(kz), length(kx), nyFFT) ;  % Defining image matrix
             b='';
@@ -317,11 +307,7 @@ classdef Fourier_beamforming < midprocess
             end
 
             h.beamformed_data.data = f_image(:);
-            if h.refocus
-                h.beamformed_data.name = [h.name, ' + ReFocus'] ;
-            else
-                h.beamformed_data.name = h.name ;
-            end
+            h.beamformed_data.name = h.name ;
             beamformed_data = h.beamformed_data;
             h.save_hash();
 
