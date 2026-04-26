@@ -141,9 +141,6 @@ else
                         elseif strcmp(class_name,'uff.sector_scan')&&strcmp(prop{m}.name,'apex')
                             object.('origin')=uff.read_object(filename,prop{m}.location,verbose);
                         else
-                            if isstring(prop{m}.location)
-                                prop{m}.location = strjoin(prop{m}.location, "") ;
-                            end
                             object.(prop{m}.name)=uff.read_object(filename,prop{m}.location,verbose);
                         end
                     end
