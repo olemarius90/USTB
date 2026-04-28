@@ -97,7 +97,13 @@ das_image = b_data.get_image('abs') ;
 das_image = das_image/max(das_image(:)) ;
 
 %% Image comparison
+b_data_compare = uff.beamformed_data(w_data)
+b_data_compare.data(:,:,1) = w_data.data;
+b_data_compare.data(:,:,2) = DCWA_data.data;
+b_data_compare.data(:,:,3) = b_data.data;
+b_data_compare.plot()
 
+%%
 figure
 set(gcf, "Position", [0.1818    0.3994    1.0904    0.4008]*1e3)
 w_data.plot(subplot(1,3,1), "WA") ;
