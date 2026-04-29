@@ -73,8 +73,8 @@ classdef integration_fourier_beamforming_sta_test < matlab.unittest.TestCase
             testCase.verifyTrue(all(isfinite(dcwa_img)));
             testCase.verifyTrue(all(isfinite(das_img)));
 
-            % WA and DCWA are both wavenumber reconstructions; expect strong agreement.
-            rho = sum(wa_img .* dcwa_img) / (norm(wa_img) * norm(dcwa_img) + eps);
+            % DCWA and DAS produce almost equal images; expect strong agreement.
+            rho = sum(das_img .* dcwa_img) / (norm(das_img) * norm(dcwa_img) + eps);
             testCase.verifyGreaterThan(rho, 0.85);
 
             % All three should have a clear global maximum (phantom + speckle).
