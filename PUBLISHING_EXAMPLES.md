@@ -33,6 +33,23 @@ mex('-R2018a', '-D_UNIX_', '-I/usr/include/tbb', ...
 5. The tarball is uploaded to the `examples-v1` GitHub Release
 6. The deploy workflow (`deploy-website.yml`) downloads and extracts it into `website/examples/`
 
+## Publications page (`publications.html`)
+
+Some iframes load HTML that is **not** under `examples/` in the repository (source lives in `sandbox/`). Those are published by **`publish_all_examples.m`** into the same `examples_html/` tree so the deployed path matches the site, e.g.:
+
+| Website path | Source in repo |
+|---|---|
+| `examples/generalized_beamformer/CPWC_double_adaptive_redone.html` | `sandbox/The_Generalized_Beamformer/CPWC_double_adaptive_redone.m` |
+
+After changing `publish_all_examples.m`, run `./publish_examples.sh` and upload **`examples-html.tar.gz`** to the **`examples-v1`** release on **`unioslo/USTB`** (and rely on CI `curl` fallback to your fork if needed).
+
+```bash
+./publish_examples.sh
+./publish_examples.sh --upload unioslo/USTB
+```
+
+Then trigger **Deploy Website** on `unioslo/USTB` `master` (or merge the workflow paths fix) so GitHub Pages picks up the new tarball.
+
 ## Manual Steps
 
 ```bash

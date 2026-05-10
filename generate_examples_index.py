@@ -71,6 +71,7 @@ FOLDER_LABELS = {
     "field_II": "Field II Simulations",
     "FLUST": "FLUST (Flow Simulator)",
     "fresnel": "Fresnel Simulations",
+    "generalized_beamformer": "The Generalized Beamformer (sandbox)",
     "kWave": "k-Wave Simulations",
     "picmus": "PICMUS Challenge",
     "REFoCUS": "REFoCUS",

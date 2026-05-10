@@ -15,21 +15,83 @@
 % by Anders E. Vrålstad and Ole Marius Hoel Rindal
 %% Clear environment
 clear all; close all;
-%% Load data
-% Read the data, poentitally download it
+%% Dataset source
+% Read the data, potentially download it
 url='http://ustb.no/datasets/';      % if not found downloaded from here
 local_path = [ustb_path(),'/data/']; % location of example data
 addpath(local_path);
 
-% Choose dataset
-%filename='speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff'; tag = 'full';
-%filename='speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff'; tag = 'third';
-filename='speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'; tag = 'half';
-tools.download(filename, url, data_path);   
+%% Speckle chamber ROI — all simulated blockage levels (published HTML uses snapnow)
+% Red rectangle matches gCNR `center_rectangle` = [-0.006, 0.07, 0.007, 0.04] m on the
+% Cartesian scan-converted grid (shown here in mm): [-6, 70, 7, 40].
+% Lightweight RTB-only pass per dataset so publish stays tractable.
 
-% Check if the file is available in the local path or downloads otherwise
-channel_data = uff.read_object([data_path, filesep, filename],'/channel_data');
-channel_data.data = channel_data.data./max(channel_data.data(:));
+speckle_chamber_mm = [-6, 70, 7, 40];
+dataset_roi = {
+    'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', 'Full aperture (no element blockage)'
+    'speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff', 'One-third of aperture blocked'
+    'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', 'Half of aperture blocked'
+    };
+
+for r = 1:size(dataset_roi, 1)
+    fn_roi = dataset_roi{r, 1};
+    roi_title = dataset_roi{r, 2};
+    tools.download(fn_roi, url, data_path());
+    cd_roi = uff.read_object([data_path(), filesep, fn_roi], '/channel_data');
+    cd_roi.data = cd_roi.data ./ max(cd_roi.data(:));
+
+    depth_roi = linspace(0e-3, 110e-3, 512).';
+    az_roi = zeros(cd_roi.N_waves, 1);
+    for n = 1:cd_roi.N_waves
+        az_roi(n) = cd_roi.sequence(n).source.azimuth;
+    end
+    scan_roi = uff.sector_scan('azimuth_axis', az_roi, 'depth_axis', depth_roi);
+    Fnr = cd_roi.sequence(1).source.distance / (max(cd_roi.probe.x) * 2);
+
+    mid_roi = midprocess.das();
+    mid_roi.channel_data = cd_roi;
+    mid_roi.dimension = dimension.both();
+    mid_roi.scan = scan_roi;
+    if isempty(which('das_c'))
+        mid_roi.code = code.matlab;
+    else
+        mid_roi.code = code.mex;
+    end
+    mid_roi.receive_apodization.window = uff.window.boxcar;
+    mid_roi.receive_apodization.f_number = 1.7;
+    mid_roi.transmit_apodization.window = uff.window.hamming;
+    mid_roi.transmit_apodization.f_number = Fnr;
+    mid_roi.transmit_apodization.minimum_aperture = 3e-3;
+    b_roi = mid_roi.go();
+
+    [RTB_sc_roi, Xr, Zr] = tools.scan_convert(b_roi.get_image(), b_roi.scan.azimuth_axis, b_roi.scan.depth_axis, 1024, 1024);
+
+    figure('Visible', 'off');
+    imagesc(Xr * 1e3, Zr * 1e3, RTB_sc_roi, [-60 0]);
+    colormap gray;
+    colorbar;
+    axis image;
+    xlabel('x [mm]');
+    ylabel('z [mm]');
+    title(roi_title, 'Interpreter', 'none');
+    xlim([-20 20]);
+    ylim([60 110]);
+    hold on;
+    rectangle(gca, 'Position', speckle_chamber_mm, 'EdgeColor', 'r', 'LineWidth', 2);
+    hold off;
+    set(findall(gcf, '-property', 'FontSize'), 'FontSize', 14);
+    drawnow;
+    snapnow;
+    close(gcf);
+end
+
+%% Primary case — full pipeline (paper figures, gCNR, differences): half aperture blocked
+filename = 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff';
+tag = 'half';
+tools.download(filename, url, data_path());
+
+channel_data = uff.read_object([data_path(), filesep, filename], '/channel_data');
+channel_data.data = channel_data.data ./ max(channel_data.data(:));
 
 storefolder = ['./Figures/simulated_gCNR_',tag, '/'];
 mkdir(storefolder);

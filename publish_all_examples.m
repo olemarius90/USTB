@@ -139,6 +139,39 @@ for k = 1:numel(all_m)
     end
 end
 
+% --- Extra HTML not under examples/ (linked from website publications iframes)
+% e.g. website/publications.html -> examples/generalized_beamformer/CPWC_double_adaptive_redone.html
+extra_pub = {
+    fullfile(ustb_root, 'sandbox', 'The_Generalized_Beamformer', 'CPWC_double_adaptive_redone.m'), 'generalized_beamformer'
+    };
+for e = 1:size(extra_pub, 1)
+    src_x = extra_pub{e, 1};
+    rel_out = extra_pub{e, 2};
+    if exist(src_x, 'file') ~= 2
+        fprintf('[SKIP]  (extra) missing file: %s\n', strrep(src_x, [ustb_root filesep], ''));
+        continue;
+    end
+    out_dir_x = fullfile(output_root, rel_out);
+    if ~exist(out_dir_x, 'dir')
+        mkdir(out_dir_x);
+    end
+    opts_x = struct('outputDir', out_dir_x, 'format', 'html', 'showCode', true, ...
+        'evalCode', eval_code, 'catchError', true, 'createThumbnail', false, 'maxOutputLines', Inf);
+    fprintf('[PUB-X] (extra) %s -> %s/ ... ', strrep(src_x, [ustb_root filesep], ''), rel_out);
+    original_dir = pwd;
+    try
+        cd(fileparts(src_x));
+        publish(src_x, opts_x);
+        fprintf('OK\n');
+        succeeded{end+1} = src_x; %#ok<AGROW>
+    catch me
+        fprintf('FAILED: %s\n', me.message);
+        failed{end+1} = src_x; %#ok<AGROW>
+    end
+    cd(original_dir);
+    close all;
+end
+
 fprintf('\n=== Summary ===\n');
 fprintf('Published: %d\n', numel(succeeded));
 fprintf('Failed:    %d\n', numel(failed));
