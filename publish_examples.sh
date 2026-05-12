@@ -53,14 +53,10 @@ fi
 echo "MEX: $(ls -la +mex/das_c.mexa64 2>/dev/null | awk '{print $6, $7, $8, $9}')"
 echo ""
 
-# Publish examples (headless, no display)
+# Publish examples (headless, no display). Single-line -batch: multiline breaks argument passing.
 echo "Publishing examples..."
 unset DISPLAY
-matlab -nodisplay -batch "
-    addpath(genpath('.'));
-    ${FIELD_II_CMD}
-    publish_all_examples('${OUTPUT_DIR}', true)
-" 2>&1 | tee publish_examples.log
+matlab -nodisplay -batch "cd('${SCRIPT_DIR}'); addpath(genpath(pwd)); ${FIELD_II_CMD}publish_all_examples('${OUTPUT_DIR}', true);" 2>&1 | tee publish_examples.log
 
 # Check for errors in published HTML
 echo ""
