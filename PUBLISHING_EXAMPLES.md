@@ -33,7 +33,24 @@ mex('-R2018a', '-D_UNIX_', '-I/usr/include/tbb', ...
 5. The tarball is uploaded to the `examples-v1` GitHub Release
 6. The deploy workflow (`deploy-website.yml`) downloads and extracts it into `website/examples/`
 
-### Publication pages (TUSON, etc.)
+## Publications page (`publications.html`)
+
+Some iframes load HTML that is **not** under `examples/` in the repository (source lives in `sandbox/`). Those are published by **`publish_all_examples.m`** into the same `examples_html/` tree so the deployed path matches the site, e.g.:
+
+| Website path | Source in repo |
+|---|---|
+| `examples/generalized_beamformer/CPWC_double_adaptive_redone.html` | `sandbox/The_Generalized_Beamformer/CPWC_double_adaptive_redone.m` |
+
+After changing `publish_all_examples.m`, run `./publish_examples.sh` and upload **`examples-html.tar.gz`** to the **`examples-v1`** release on **`unioslo/USTB`** (and rely on CI `curl` fallback to your fork if needed).
+
+```bash
+./publish_examples.sh
+./publish_examples.sh --upload unioslo/USTB
+```
+
+Then trigger **Deploy Website** on `unioslo/USTB` `master` (or merge the workflow paths fix) so GitHub Pages picks up the new tarball.
+
+### Publication pages (`publications/`, TUSON, etc.)
 
 Scripts under `publications/` are **not** part of `publish_all_examples` (they live outside `examples/`). Build and upload them with:
 
@@ -45,6 +62,12 @@ Scripts under `publications/` are **not** part of `publish_all_examples` (they l
 ```
 
 This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and uploads it to the same **`examples-v1`** release. The site workflow extracts it into `website/examples/` **after** `examples-html.tar.gz`, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` are served from the release, not from git.
+
+## Windows (Git Bash)
+
+- MATLAB prints **"Unrecognized command line option: nodisplay"** if you use **Linux-only** `-nodisplay`. `publish_examples.sh` omits that flag when **Windows** is detected (`WINDIR` / `SYSTEMROOT`, or `OSTYPE` msys/cygwin/mingw) and only adds it on real Linux/macOS shells.
+- **`slsc_mex.mexw64`** errors ("side-by-side configuration is incorrect") mean a **Visual C++ runtime** mismatch — reinstall the MSVC redist MATLAB ships with, or **rebuild** `+mex/slsc_mex` from source. Examples that depend on SLSC are **skipped** in `publish_all_examples.m` until the MEX loads.
+- Helper scripts under `examples/dataset_catalog_previews/` and **`dataset_smoke_test_all.m`** are **skipped** for publishing (not standalone / too heavy).
 
 ## Manual Steps
 
@@ -101,6 +124,17 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 | `FI_P4_cardiac_coherence.m` | Needs Parallel Computing Toolbox |
 | `STAI_2D_array_cardiac.m` | 3D simulation, very long runtime |
 | `CPWC_2D_array_cardiac.m` | 3D simulation, very long runtime |
+
+### Publishing batch (helpers, heavy downloads, SLSC MEX)
+
+| Example | Reason |
+|---|---|
+| `dataset_preview_beamform.m` | Requires input arguments; not standalone |
+| `export_png_like_b_data_plot.m` | Requires input arguments; not standalone |
+| `dataset_smoke_test_all.m` | Many downloads; very long in batch |
+| `FI_UFF_generalized_coherence_factor.m` | `slsc_mex` (often fails on Windows if VC++ runtime / MEX broken) |
+| `FI_UFF_short_lag_spatial_coherence.m` | `slsc_mex` |
+| `FI_UFF_multi_frame_processing.m` | Dataset URL may return HTTP 303 until download helper is updated |
 
 ### Course exercises
 
