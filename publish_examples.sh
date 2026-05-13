@@ -40,7 +40,26 @@ if ! command -v matlab &> /dev/null; then
 fi
 echo "MATLAB: $(matlab -batch "disp(version)" 2>/dev/null | tail -1)"
 
-# Check Field II
+# -nodisplay is Linux/macOS only; Windows MATLAB warns "Unrecognized command line option: nodisplay"
+MATLAB_BATCH_EXTRA=()
+case "$(uname -s 2>/dev/null)" in
+    Linux|Darwin)
+        MATLAB_BATCH_EXTRA=(-nodisplay)
+        ;;
+    *)
+        # Windows (Git Bash / MSYS), etc.
+        ;;
+esac
+
+# Check MEX (platform-specific binary)
+echo -n "MEX: "
+if ls +mex/das_c.mexw64 >/dev/null 2>&1; then
+    ls -la +mex/das_c.mexw64 2>/dev/null | awk '{print $6, $7, $8, $9}'
+elif ls +mex/das_c.mexa64 >/dev/null 2>&1; then
+    ls -la +mex/das_c.mexa64 2>/dev/null | awk '{print $6, $7, $8, $9}'
+else
+    echo "(no das_c mex found)"
+fi
 FIELD_II_CMD=""
 if [ -d "${FIELD_II_PATH}" ]; then
     echo "Field II: ${FIELD_II_PATH}"
@@ -49,14 +68,13 @@ else
     echo "Field II: not found (field_II examples will use fresnel fallback)"
 fi
 
-# Check MEX
-echo "MEX: $(ls -la +mex/das_c.mexa64 2>/dev/null | awk '{print $6, $7, $8, $9}')"
 echo ""
 
-# Publish examples (headless, no display). Single-line -batch: multiline breaks argument passing.
+# Publish examples. Single-line -batch: multiline breaks argument passing.
+# Use MATLAB_BATCH_EXTRA (-nodisplay on Unix only; Windows MATLAB rejects it).
 echo "Publishing examples..."
 unset DISPLAY
-matlab -nodisplay -batch "cd('${SCRIPT_DIR}'); addpath(genpath(pwd)); ${FIELD_II_CMD}publish_all_examples('${OUTPUT_DIR}', true);" 2>&1 | tee publish_examples.log
+matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "cd('${SCRIPT_DIR}'); addpath(genpath(pwd)); ${FIELD_II_CMD}publish_all_examples('${OUTPUT_DIR}', true);" 2>&1 | tee publish_examples.log
 
 # Check for errors in published HTML
 echo ""

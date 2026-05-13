@@ -54,7 +54,13 @@ skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segf
               'STAI_L11_resolution_phantom.m', ...    % Field II simulation, very slow
               'CPWC_L11_probe_sim.m', ...             % Field II simulation, very slow
               'FI_elevation_profile.m', ...              % Field II simulation, very slow
-              'MATLAB_intro.m'};                      % uses ginput(), hangs in headless CI
+              'MATLAB_intro.m', ...                      % uses ginput(), hangs in headless CI
+              'dataset_preview_beamform.m', ...           % helper; requires args, not a standalone example
+              'export_png_like_b_data_plot.m', ...       % helper; requires args
+              'dataset_smoke_test_all.m', ...            % downloads many datasets; very long / brittle in batch
+              'FI_UFF_generalized_coherence_factor.m', ... % uses mex.slsc_mex; often broken on Windows (VC++ runtime)
+              'FI_UFF_short_lag_spatial_coherence.m', ...  % uses mex.slsc_mex
+              'FI_UFF_multi_frame_processing.m'};         % tools.download HTTP 303 on some hosts until fixed
 
 all_m = dir(fullfile(examples_dir, '**', '*.m'));
 
