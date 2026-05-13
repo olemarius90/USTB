@@ -40,16 +40,26 @@ if ! command -v matlab &> /dev/null; then
 fi
 echo "MATLAB: $(matlab -batch "disp(version)" 2>/dev/null | tail -1)"
 
-# -nodisplay is Linux/macOS only; Windows MATLAB warns "Unrecognized command line option: nodisplay"
+# -nodisplay is Linux/macOS only; Windows MATLAB warns "Unrecognized command line option: nodisplay".
+# Prefer env over uname: some shells report oddly, and detecting Windows avoids passing the flag even
+# when MATLAB is the Windows binary (e.g. some WSL/Git Bash setups).
 MATLAB_BATCH_EXTRA=()
-case "$(uname -s 2>/dev/null)" in
-    Linux|Darwin)
-        MATLAB_BATCH_EXTRA=(-nodisplay)
-        ;;
-    *)
-        # Windows (Git Bash / MSYS), etc.
+_windows_env=0
+if [ -n "${WINDIR:-}" ] || [ -n "${SYSTEMROOT:-}" ]; then
+    _windows_env=1
+fi
+case "${OSTYPE:-}" in
+    msys*|cygwin*|mingw*)
+        _windows_env=1
         ;;
 esac
+if [ "$_windows_env" -eq 0 ]; then
+    case "$(uname -s 2>/dev/null)" in
+        Linux|Darwin)
+            MATLAB_BATCH_EXTRA=(-nodisplay)
+            ;;
+    esac
+fi
 
 # Check MEX (platform-specific binary)
 echo -n "MEX: "
