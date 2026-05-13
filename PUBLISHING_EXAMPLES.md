@@ -50,6 +50,19 @@ After changing `publish_all_examples.m`, run `./publish_examples.sh` and upload 
 
 Then trigger **Deploy Website** on `unioslo/USTB` `master` (or merge the workflow paths fix) so GitHub Pages picks up the new tarball.
 
+### Publication pages (`publications/`, TUSON, etc.)
+
+Scripts under `publications/` are **not** part of `publish_all_examples` (they live outside `examples/`). Build and upload them with:
+
+```bash
+./publish_publications.sh
+./publish_publications.sh --upload
+# Or for the upstream repo:
+./publish_publications.sh --upload unioslo/USTB
+```
+
+This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and uploads it to the same **`examples-v1`** release. The site workflow extracts it into `website/examples/` **after** `examples-html.tar.gz`, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` are served from the release, not from git.
+
 ## Windows (Git Bash)
 
 - MATLAB prints **"Unrecognized command line option: nodisplay"** if you use **Linux-only** `-nodisplay`. `publish_examples.sh` omits that flag when **Windows** is detected (`WINDIR` / `SYSTEMROOT`, or `OSTYPE` msys/cygwin/mingw) and only adds it on real Linux/macOS shells.

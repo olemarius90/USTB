@@ -65,6 +65,7 @@ HTML_TEMPLATE = """\
 """
 
 FOLDER_LABELS = {
+    "TUSON": "TUFFC short papers (TUSON)",
     "acoustical_radiation_force_imaging": "Acoustical Radiation Force Imaging",
     "advanced_beamforming": "Advanced Beamforming",
     "alpinion": "Alpinion",

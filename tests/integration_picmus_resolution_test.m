@@ -6,8 +6,9 @@ classdef integration_picmus_resolution_test < matlab.unittest.TestCase
 
     methods (Test)
         function test_picmus_beamforming_matches_reference(testCase)
+            % Original USTB webhost; file not in the minimal Zenodo bundle for this test.
             url = 'http://ustb.no/datasets/';
-            filename = 'PICMUS_experiment_resolution_distortion.uff';
+            filename = 'PICMUS_simulation_resolution_distortion.uff';
             tools.download(filename, url, data_path);
             filepath = [data_path filesep filename];
 
@@ -42,7 +43,7 @@ classdef integration_picmus_resolution_test < matlab.unittest.TestCase
 
         function test_picmus_uff_contents(testCase)
             url = 'http://ustb.no/datasets/';
-            filename = 'PICMUS_experiment_resolution_distortion.uff';
+            filename = 'PICMUS_simulation_resolution_distortion.uff';
             tools.download(filename, url, data_path);
             filepath = [data_path filesep filename];
 
