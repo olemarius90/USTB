@@ -65,6 +65,7 @@ This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and up
 
 ## Windows (Git Bash)
 
+- **Git Bash paths:** the repo root appears as **`/c/...`** but Windows MATLAB **`cd()`** expects **`C:/...`** (or `\`). `publish_examples.sh` / `publish_publications.sh` rewrite paths (`cygpath -m` or **`/c/x` → `C:/x`**) before **`-batch`**, otherwise **`publish_all_examples`** is “not found” while MATLAB says it exists under **`C:\...\ustb`**.
 - MATLAB prints **"Unrecognized command line option: nodisplay"** if you use **Linux-only** `-nodisplay`. `publish_examples.sh` omits that flag when **Windows** is detected (`WINDIR` / `SYSTEMROOT`, or `OSTYPE` msys/cygwin/mingw) and only adds it on real Linux/macOS shells.
 - **`slsc_mex.mexw64`** errors ("side-by-side configuration is incorrect") mean a **Visual C++ runtime** mismatch — reinstall the MSVC redist MATLAB ships with, or **rebuild** `+mex/slsc_mex` from source. Examples that depend on SLSC are **skipped** in `publish_all_examples.m` until the MEX loads.
 - Helper scripts under `examples/dataset_catalog_previews/` and **`dataset_smoke_test_all.m`** are **skipped** for publishing (not standalone / too heavy).

@@ -19,6 +19,7 @@
 # The script must be run from the USTB repository root.
 
 set -e
+set -o pipefail 2>/dev/null || true
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/examples_html"
@@ -61,6 +62,33 @@ if [ "$_windows_env" -eq 0 ]; then
     esac
 fi
 
+# Git Bash / MSYS: $PWD is often /c/Users/... ; Windows MATLAB ignores that in cd()/addpath().
+# Use a path MATLAB accepts: cygpath -m -> C:/..., or manual /c/x -> C:/x fallback.
+repo_path_for_matlab() {
+    local p="$1"
+    if [ "$_windows_env" -ne 1 ]; then
+        printf '%s' "$p"
+        return
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+        if out=$(cygpath -m "$p" 2>/dev/null) && [ -n "$out" ]; then
+            printf '%s' "$out"
+            return
+        fi
+    fi
+    case "$p" in
+        /[a-zA-Z]/?*)
+            local drive rest
+            drive=$(printf '%s' "${p:1:1}" | tr '[:lower:]' '[:upper:]')
+            rest="${p:3}"
+            printf '%s:/%s' "$drive" "$rest"
+            ;;
+        *)
+            printf '%s' "$p"
+            ;;
+    esac
+}
+
 # Check MEX (platform-specific binary)
 echo -n "MEX: "
 if ls +mex/das_c.mexw64 >/dev/null 2>&1; then
@@ -82,9 +110,12 @@ echo ""
 
 # Publish examples. Single-line -batch: multiline breaks argument passing.
 # Use MATLAB_BATCH_EXTRA (-nodisplay on Unix only; Windows MATLAB rejects it).
+SCRIPT_DIR_M=$(repo_path_for_matlab "$SCRIPT_DIR")
+OUTPUT_DIR_M=$(repo_path_for_matlab "$OUTPUT_DIR")
 echo "Publishing examples..."
+echo "(MATLAB cwd path: ${SCRIPT_DIR_M})"
 unset DISPLAY
-matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "cd('${SCRIPT_DIR}'); addpath(genpath(pwd)); ${FIELD_II_CMD}publish_all_examples('${OUTPUT_DIR}', true);" 2>&1 | tee publish_examples.log
+matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "cd('${SCRIPT_DIR_M}'); addpath(genpath(pwd)); ${FIELD_II_CMD}publish_all_examples('${OUTPUT_DIR_M}', true);" 2>&1 | tee publish_examples.log
 
 # Check for errors in published HTML
 echo ""
