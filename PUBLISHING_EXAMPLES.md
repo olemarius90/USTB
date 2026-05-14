@@ -97,11 +97,12 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 
 ### External toolbox dependencies
 
-| Example | Reason |
+| Area | Reason |
 |---|---|
 | `examples/FLUST/*` | Needs MUST toolbox |
 | `examples/kWave/*` | Needs k-Wave toolbox |
 | `examples/REFoCUS/*` | Causes segfault in headless MATLAB |
+| `examples/field_II/*` | Field II **`field_init`** not available on typical dev machines |
 
 ### Hardware/data dependencies
 
@@ -116,15 +117,13 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 | Example | Reason |
 |---|---|
 | `MATLAB_intro.m` | Uses `ginput()`, hangs in headless |
-| `STAI_L11_speckle.m` | Field II simulation, very slow |
-| `STAI_L11_resolution_phantom.m` | Field II simulation, very slow |
-| `CPWC_L11_probe_sim.m` | Field II simulation, very slow |
-| `FI_elevation_profile.m` | Field II simulation, very slow |
 | `FI_L11_parfor_compared_to_fresnel.m` | Needs Parallel Computing Toolbox |
 | `STAI_L11_speckle_parfor.m` | Needs Parallel Computing Toolbox |
 | `FI_P4_cardiac_coherence.m` | Needs Parallel Computing Toolbox |
 | `STAI_2D_array_cardiac.m` | 3D simulation, very long runtime |
 | `CPWC_2D_array_cardiac.m` | 3D simulation, very long runtime |
+
+*(Field II slowdowns live under **`examples/field_II/`**, which is skipped entirely — see External toolbox dependencies.)*
 
 ### Publishing batch (helpers, heavy downloads, SLSC MEX)
 
@@ -136,6 +135,12 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 | `FI_UFF_generalized_coherence_factor.m` | `slsc_mex` (often fails on Windows if VC++ runtime / MEX broken) |
 | `FI_UFF_short_lag_spatial_coherence.m` | `slsc_mex` |
 | `FI_UFF_multi_frame_processing.m` | Dataset URL may return HTTP 303 until download helper is updated |
+| `resolve_channel_data_path.m`, `simple_process_dataset.m`, `website_slug_for_dataset.m` | Dataset-smoke helpers; **not** standalone **`publish`** targets |
+| `CPWC_UFF_read.m`, `CPWC_UFF_write.m`, `FI_UFF_phased_array.m`, `FI_UFF_Verasonics_MLA.m` | 404/`questdlg`/MLA apod brittle in batch (Windows / recent MATLAB) |
+
+### Fresnel / GPU / MLA (skipped by basename)
+
+STA/RTB/MLA/matrix-array/low-PW/GPU/multiframe demos that reliably throw when **`publish()`** runs **`evalCode`** in batch (recent MATLAB): see the **`skip_files`** list inside **`publish_all_examples.m`** (`CPWC_linear_array_beamformer_speed`, `STA_linear_array*.m`, **`FI_phased_array_MLA`**, **`CPWC_matrix_array`**, …).
 
 ### Course exercises
 
@@ -143,39 +148,22 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 |---|---|
 | `examples/UiO_course_IN4015_Ultrasound_Imaging/*` | Student exercises, some with unimplemented code |
 
-### Runtime errors (published but removed)
+### Runtime errors (`publish_examples.sh` cleanup)
 
-These examples are attempted but produce errors during execution and are automatically removed from the final output:
+Examples that **`publish`** with **`catchError`** may still emit error text inside HTML until `publish_examples.sh` strips those pages. Prefer skipping brittle scripts (above) so you do not churn release tarballs full of placeholders.
 
-| Example | Error |
-|---|---|
-| `FI_UFF_delay_multiply_and_sum_contrast.m` | `tools.measure_contrast_ratio` error |
-| `FI_UFF_generalized_coherence_factor.m` | SLSC `makelagmat` error |
-| `FI_UFF_multi_frame_processing.m` | HTTP 303 download error |
-| `FI_UFF_short_lag_spatial_coherence.m` | SLSC `makelagmat` error |
-| `FI_UFF_simplified_delay_multiply_and_sum_complexity.m` | `printSnap` error |
-| `FI_UFF_synthetic_TX_SLSC.m` | `printSnap` error |
-| `CPWC_linear_array_multiframe.m` | Fresnel phantom set error |
-| `FI_linear_array_receive_processes.m` | `printSnap` error |
-| `FI_phased_array_multiframe.m` | Fresnel phantom set error |
-| `CPWC_UFF_Verasonics.m` | `printSnap` error |
-| `CPWC_UFF_read.m` | HTTP 303 download error |
-| `CPWC_UFF_write.m` | `questdlg` headless error |
-| `FI_UFF_phased_array.m` | Runtime error |
-| `FI_UFF_Verasonics_MLA.m` | Runtime error |
-| `STAI_theoretical_PSF.m` | Field II cleanup error |
-| `STAI_L11_probe_sim.m` | MEX/runtime error |
-| `STAI_PSF.m` | Field II error |
-| Various fresnel examples | Fresnel simulator errors in headless |
+Historical examples that used to surface here are enumerated in **`skip_files`** inside **`publish_all_examples.m`**; many are now **skipped** instead of attempted.
 
-## Currently Published (24 examples)
+## Published gallery (indicative)
 
-| Category | Examples |
+Output varies by MATLAB version/toolboxes — check **`examples_html/index.html`** after **`./publish_examples.sh`**.
+
+| Category | Examples *(non-exhaustive)* |
 |---|---|
 | Advanced Beamforming | `FI_UFF_delay_multiply_and_sum_resolution` |
-| Field II | `STAI_L11_probe_sim`, `STAI_PSF` |
+| Field II | **Not published by default** — whole **`examples/field_II/`** directory is **`skip_dirs`** unless you customize it locally |
 | Fresnel / Curvilinear | `DW_curvilinear_array`, `FI_curvilinear_array` |
-| Fresnel / Linear | `CPWC_linear_array`, `CPWC_linear_array_tilt`, `DW_linear_array`, `FI_linear_array`, `RTB_linear_array_close_up` |
-| Fresnel / Phased | `DW_phased_array`, `FI_phased_array`, `FI_phased_array_RTB`, `FI_phased_array_RTB_close_up` |
-| PICMUS | All 6 (experiment/simulation × resolution/contrast/invivo) |
-| UFF | `CPWC_UFF_Alpinion`, `FI_UFF_Alpinion`, `FI_UFF_Verasonics_RTB`, `STAI_UFF_beamform_with_demodulation` |
+| Fresnel / Linear | e.g. `CPWC_linear_array_tilt`, `DW_linear_array`, `FI_linear_array`, `RTB_linear_array_close_up` *(STA/standard RTB/multi-frame/low-PW/GPU snippets are in **`skip_files`**)*
+| Fresnel / Phased | e.g. `DW_phased_array`, `FI_phased_array`, `FI_phased_array_RTB*` *(some MLA / multiframe demos skipped)* |
+| PICMUS | All six *(experiment/simulation × resolution/contrast/invivo)* when downloads succeed |
+| UFF | e.g. `CPWC_UFF_Alpinion`, `FI_UFF_Alpinion`, `FI_UFF_Verasonics_RTB`, `STAI_UFF_beamform_with_demodulation` |
