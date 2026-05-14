@@ -15,6 +15,7 @@
 # Run from the USTB repository root.
 
 set -e
+set -o pipefail 2>/dev/null || true
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/publications_html"
@@ -24,9 +25,57 @@ TARBALL="publications-html.tar.gz"
 VRALSTAD_REL="publications/TUSON/Vralstad_et_al_2026_Retrospective_transmit_correction_of_blocked_arrays"
 SRC_M="${VRALSTAD_REL}/Correction_of_simulated_blockage.m"
 
+MATLAB_BATCH_EXTRA=()
+_windows_env=0
+if [ -n "${WINDIR:-}" ] || [ -n "${SYSTEMROOT:-}" ]; then
+    _windows_env=1
+fi
+case "${OSTYPE:-}" in
+    msys*|cygwin*|mingw*)
+        _windows_env=1
+        ;;
+esac
+if [ "$_windows_env" -eq 0 ]; then
+    case "$(uname -s 2>/dev/null)" in
+        Linux|Darwin)
+            MATLAB_BATCH_EXTRA=(-nodisplay)
+            ;;
+    esac
+fi
+
+# Same as publish_examples.sh — Git Bash /c/... is not accepted by Windows MATLAB cd().
+repo_path_for_matlab() {
+    local p="$1"
+    if [ "$_windows_env" -ne 1 ]; then
+        printf '%s' "$p"
+        return
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+        if out=$(cygpath -m "$p" 2>/dev/null) && [ -n "$out" ]; then
+            printf '%s' "$out"
+            return
+        fi
+    fi
+    case "$p" in
+        /[a-zA-Z]/?*)
+            local drive rest
+            drive=$(printf '%s' "${p:1:1}" | tr '[:lower:]' '[:upper:]')
+            rest="${p:3}"
+            printf '%s:/%s' "$drive" "$rest"
+            ;;
+        *)
+            printf '%s' "$p"
+            ;;
+    esac
+}
+
+SCRIPT_DIR_M=$(repo_path_for_matlab "$SCRIPT_DIR")
+OUTPUT_DIR_M=$(repo_path_for_matlab "$OUTPUT_DIR")
+
 echo "=== USTB publication HTML publisher ==="
 echo "Source: ${SRC_M}"
 echo "Output: ${OUTPUT_DIR}"
+echo "(MATLAB paths: ${SCRIPT_DIR_M} -> ${OUTPUT_DIR_M})"
 echo ""
 
 rm -rf "${OUTPUT_DIR}"
@@ -38,25 +87,19 @@ if ! command -v matlab &> /dev/null; then
 fi
 
 echo "Publishing (evalCode)..."
-matlab -nodisplay -batch "
-    addpath(genpath('${SCRIPT_DIR}'));
-    src = fullfile('${SCRIPT_DIR}', '${SRC_M}');
-    out = fullfile('${OUTPUT_DIR}', '${VRALSTAD_REL}');
-    if ~isfile(src), error('Missing %s', src); end
-    opts = struct('outputDir', out, 'format', 'html', 'showCode', true, ...
-        'evalCode', true, 'catchError', true, 'createThumbnail', false, ...
-        'maxOutputLines', inf);
-    publish(src, opts);
-" 2>&1 | tee publish_publications.log
+# Single-line -batch — multiline parsing differs across platforms/shells.
+matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "addpath(genpath('${SCRIPT_DIR_M}')); src = fullfile('${SCRIPT_DIR_M}', '${SRC_M}'); out = fullfile('${OUTPUT_DIR_M}', '${VRALSTAD_REL}'); if ~isfile(src), error('Missing %s', src); end; opts = struct('outputDir', out, 'format', 'html', 'showCode', true, 'evalCode', true, 'catchError', true, 'createThumbnail', false, 'maxOutputLines', inf); publish(src, opts);" 2>&1 | tee publish_publications.log
 
-# Drop broken publishes (same idea as publish_examples.sh)
 echo ""
 echo "=== Checking for errors in published HTML ==="
+ERROR_COUNT=0
 for f in $(find "${OUTPUT_DIR}" -name "*.html"); do
     if grep -q "Error using\|Error in " "$f" 2>/dev/null; then
         echo "  ERROR in $(basename "$f") — remove output or fix script"
+        ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 done
+echo "Marked ${ERROR_COUNT} HTML file(s) with errors (see grep above)"
 
 cd "${OUTPUT_DIR}" && tar -czf "${SCRIPT_DIR}/${TARBALL}" . && cd "${SCRIPT_DIR}"
 echo ""
