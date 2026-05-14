@@ -15,7 +15,10 @@ on:
       - '+tools/**'
       - '*.m'
       - 'generate_examples_index.py'
+      - 'publish_common.sh'
+      - 'publish_examples.sh'
       - 'publish_publications.sh'
+      - 'publish_datasets.sh'
   pull_request:
     paths:
       - '.github/workflows/deploy-website.yml'
@@ -29,7 +32,10 @@ on:
       - '+tools/**'
       - '*.m'
       - 'generate_examples_index.py'
+      - 'publish_common.sh'
+      - 'publish_examples.sh'
       - 'publish_publications.sh'
+      - 'publish_datasets.sh'
   workflow_dispatch:
 
 permissions:
@@ -58,7 +64,7 @@ jobs:
       - name: Build API documentation
         run: sphinx-build -b html docs website/api
 
-      # --- Pre-built MATLAB examples and publication pages ---
+      # --- Pre-built release assets on examples-v1: examples-html, publications-html, datasets-html ---
       # curl -f: 404 HTML from GitHub must not be treated as success (else fallback never runs; iframe 404).
       - name: Download published examples
         run: |
@@ -101,6 +107,34 @@ jobs:
           fi
           # Tarball root is publications/TUSON/... ; site iframes use examples/TUSON/...
           cp -a "$STAGE/publications/TUSON" website/examples/
+
+      # --- Dataset page (datasets.html + assets/images/datasets/*.png) ---
+      - name: Download dataset previews bundle
+        run: |
+          set -e
+          STAGE="/tmp/datasets-html-staging"
+          EXPECTED="datasets.html"
+          PRIMARY="https://github.com/${{ github.repository }}/releases/download/examples-v1/datasets-html.tar.gz"
+          FALLBACK="https://github.com/olemarius90/USTB/releases/download/examples-v1/datasets-html.tar.gz"
+          try_datasets() {
+            local url="$1"
+            rm -rf "$STAGE" && mkdir -p "$STAGE"
+            curl -fL --retry 2 --connect-timeout 20 -S -o /tmp/datasets-html.tar.gz "$url"
+            gzip -t /tmp/datasets-html.tar.gz
+            tar -xzf /tmp/datasets-html.tar.gz -C "$STAGE"
+            if [ ! -f "$STAGE/$EXPECTED" ]; then return 1; fi
+            return 0
+          }
+          mkdir -p website/assets/images/datasets
+          if try_datasets "$PRIMARY"; then
+            echo "datasets-html: primary OK"
+          elif try_datasets "$FALLBACK"; then
+            echo "datasets-html: used olemarius90/USTB fallback"
+          else
+            echo "::warning::datasets-html.tar.gz missing or invalid — using datasets page from checkout"
+            exit 0
+          fi
+          cp -a "${STAGE}/." website/
 
       # --- Regenerate examples index to include publications ---
       - name: Generate examples index
