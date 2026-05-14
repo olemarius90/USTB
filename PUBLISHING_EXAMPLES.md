@@ -1,13 +1,31 @@
-# Publishing USTB Examples
+# Publishing USTB website assets
 
-The USTB website includes published MATLAB examples with executed code, output, and figures. These are pre-built locally and uploaded as a GitHub Release artifact, then downloaded by the deploy workflow.
+Pre-built MATLAB content is uploaded **separately** as three release assets (`examples-v1` on GitHub). That keeps runs **isolatable**: fix or refresh **examples**, **publications**, or **datasets** independently.
 
-## Quick Start
+## Three publishers (`examples-v1` assets)
+
+| Script | Artifact | Contents / deploy target |
+|---|---|---|
+| `./publish_examples.sh` | **`examples-html.tar.gz`** | `publish_all_examples.m` gallery → **`website/examples/`** |
+| `./publish_publications.sh` | **`publications-html.tar.gz`** | TUSON (etc.) MATLAB `publish` output → merged into **`website/examples/`** (e.g. `TUSON/`) |
+| `./publish_datasets.sh` | **`datasets-html.tar.gz`** | `export_dataset_previews_to_website` PNGs + `build_datasets_page.py` → **`website/`** root (`datasets.html`, `assets/images/datasets/`)
+
+Shared MATLAB flags / Git Bash paths: **`publish_common.sh`** (sourced automatically).
+
+Upload (each script):
 
 ```bash
-# From the USTB repository root:
-./publish_examples.sh              # Generate examples
-./publish_examples.sh --upload     # Generate and upload to GitHub Release
+./publish_examples.sh --upload unioslo/USTB
+./publish_publications.sh --upload unioslo/USTB
+./publish_datasets.sh --upload unioslo/USTB
+```
+
+## Examples only — Quick Start
+
+```bash
+./publish_examples.sh                 # Examples gallery only → examples-html.tar.gz
+./publish_publications.sh            # Publication HTML only → publications-html.tar.gz
+./publish_datasets.sh                # Dataset PNGs + datasets.html → datasets-html.tar.gz
 ```
 
 ## Prerequisites
@@ -26,12 +44,12 @@ mex('-R2018a', '-D_UNIX_', '-I/usr/include/tbb', ...
 
 ## How It Works
 
-1. `publish_all_examples.m` runs MATLAB `publish()` on each example
-2. Examples with errors in the HTML output are automatically removed
-3. `generate_examples_index.py` creates a browsable gallery page
-4. Everything is packaged into `examples-html.tar.gz`
-5. The tarball is uploaded to the `examples-v1` GitHub Release
-6. The deploy workflow (`deploy-website.yml`) downloads and extracts it into `website/examples/`
+1. `./publish_examples.sh` runs MATLAB `publish_all_examples.m` (**examples only** — dataset previews are `./publish_datasets.sh`)
+2. Outputs with **`Error using` / `Error in `** in the HTML body are stripped by `publish_examples.sh`
+3. `generate_examples_index.py` writes `index.html`
+4. Pack → **`examples-html.tar.gz`**, upload alongside the other two assets on **`examples-v1`**
+5. **`deploy-website.yml`** downloads **three** `.tar.gz` files (primary repo, then **`olemarius90/USTB`** fallback): examples → `website/examples/`; publications → `website/examples/` (overlay); datasets → **`website/`** overlay.
+
 
 ## Publications page (`publications.html`)
 
@@ -61,14 +79,18 @@ Scripts under `publications/` are **not** part of `publish_all_examples` (they l
 ./publish_publications.sh --upload unioslo/USTB
 ```
 
-This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and uploads it to the same **`examples-v1`** release. The site workflow extracts it into `website/examples/` **after** `examples-html.tar.gz`, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` are served from the release, not from git.
+This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) on **`examples-v1`**. **`deploy-website.yml`** overlays it onto **`website/examples/`** **after** the examples tarball, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` match the **`publications.html`** iframes.
+
+### Dataset page (`datasets.html` + PNGs)
+
+Run **`./publish_datasets.sh`** (then **`--upload`**). That produces **`datasets-html.tar.gz`**, unpacked with **`-C website`** during deploy (**`datasets.html`** + **`assets/images/datasets/`**).
 
 ## Windows (Git Bash)
 
-- **Git Bash paths:** the repo root appears as **`/c/...`** but Windows MATLAB **`cd()`** expects **`C:/...`** (or `\`). `publish_examples.sh` / `publish_publications.sh` rewrite paths (`cygpath -m` or **`/c/x` → `C:/x`**) before **`-batch`**, otherwise **`publish_all_examples`** is “not found” while MATLAB says it exists under **`C:\...\ustb`**.
+- **Git Bash paths:** the repo root appears as **`/c/...`** but Windows MATLAB **`cd()`** expects **`C:/...`** (or `\`). The **`publish_*.sh`** scripts source **`publish_common.sh`** which rewrites paths (`cygpath -m` or **`/c/x` → `C:/x`**) before **`-batch`**, otherwise **`publish_all_examples`** is “not found” while MATLAB says it exists under **`C:\...\ustb`**.
 - MATLAB prints **"Unrecognized command line option: nodisplay"** if you use **Linux-only** `-nodisplay`. `publish_examples.sh` omits that flag when **Windows** is detected (`WINDIR` / `SYSTEMROOT`, or `OSTYPE` msys/cygwin/mingw) and only adds it on real Linux/macOS shells.
 - **`slsc_mex.mexw64`** errors ("side-by-side configuration is incorrect") mean a **Visual C++ runtime** mismatch — reinstall the MSVC redist MATLAB ships with, or **rebuild** `+mex/slsc_mex` from source. Examples that depend on SLSC are **skipped** in `publish_all_examples.m` until the MEX loads.
-- Helper scripts under `examples/dataset_catalog_previews/` and **`dataset_smoke_test_all.m`** are **skipped** for publishing (not standalone / too heavy).
+- **`export_dataset_previews_to_website.m`** is **not** part of `./publish_examples.sh` — use **`./publish_datasets.sh`**.
 
 ## Manual Steps
 
@@ -82,13 +104,14 @@ tar -xzf /tmp/field_ii.tar.gz -C /opt/field_ii
 # 2. Recompile MEX (if needed)
 matlab -batch "cd('+mex'); mex('-R2018a','-D_UNIX_','-I/usr/include/tbb','LDFLAGS=\"\$LDFLAGS -Wl,-rpath,/usr/lib/x86_64-linux-gnu\"','-L/usr/lib/x86_64-linux-gnu','-ltbb','source/das_c.cpp')"
 
-# 3. Publish examples
-./publish_examples.sh
-
-# 4. Upload to GitHub Release
-./publish_examples.sh --upload
-# Or for unioslo:
+# 3. Publish examples (gallery only); upload if desired
 ./publish_examples.sh --upload unioslo/USTB
+
+# 4. Publications (optional, separate tarball)
+./publish_publications.sh --upload unioslo/USTB
+
+# 5. Dataset preview PNGs + datasets.html (optional, separate tarball; long run)
+./publish_datasets.sh --upload unioslo/USTB
 ```
 
 ## Skipped Examples
@@ -130,6 +153,7 @@ These examples are skipped by `publish_all_examples.m` (not attempted):
 | Example | Reason |
 |---|---|
 | `dataset_preview_beamform.m` | Requires input arguments; not standalone |
+| `export_dataset_previews_to_website.m` | Run **`publish_datasets.sh`** only — heavy multi-download previews |
 | `export_png_like_b_data_plot.m` | Requires input arguments; not standalone |
 | `dataset_smoke_test_all.m` | Many downloads; very long in batch |
 | `FI_UFF_generalized_coherence_factor.m` | `slsc_mex` (often fails on Windows if VC++ runtime / MEX broken) |

@@ -25,9 +25,11 @@ log_*.txt
 !window.png
 !website/assets/images/datasets/*.png
 !*.keep_this_folder_in_git
-# Populated at deploy from examples-v1 release (examples-html + publications-html tarballs)
+# Populated at deploy from examples-v1 release assets (examples, publications, datasets tarballs)
 website/examples/
 
+datasets-html.tar.gz
+publish_datasets_matlab.log
 # Local output from publish_publications.sh
 publications_html/
 publications-html.tar.gz

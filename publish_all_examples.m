@@ -58,6 +58,7 @@ skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segf
               'dataset_preview_beamform.m', ...           % helper; requires args, not a standalone example
               'export_png_like_b_data_plot.m', ...       % helper; requires args
               'dataset_smoke_test_all.m', ...            % downloads many datasets; very long / brittle in batch
+              'export_dataset_previews_to_website.m', ...  % datasets page previews; use publish_datasets.sh only
               'FI_UFF_generalized_coherence_factor.m', ... % uses mex.slsc_mex; often broken on Windows (VC++ runtime)
               'FI_UFF_short_lag_spatial_coherence.m', ...  % uses mex.slsc_mex
               'FI_UFF_multi_frame_processing.m', ...     % tools.download HTTP 303 on some hosts until fixed

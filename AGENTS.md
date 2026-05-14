@@ -34,6 +34,7 @@ USTB (UltraSound ToolBox) is an open-source toolbox for beamforming, processing,
 | Python integration tests | `cd python && pytest tests/test_integration_matlab.py tests/test_examples_vs_matlab.py` | Requires MATLAB reference HDF5 files and datasets |
 | Sphinx docs build | `sphinx-build -b html docs docs/_build/html` | Python 3 + `pip install -r docs/requirements.txt` |
 | Website preview | `cd website && python3 -m http.server 8090` | Static site, no build step |
+| Pages release overlays | `./publish_examples.sh`, `./publish_publications.sh`, `./publish_datasets.sh` (**`PUBLISHING_EXAMPLES.md`**) | Three **`examples-v1`** assets: **`examples-html.tar.gz`**, **`publications-html.tar.gz`**, **`datasets-html.tar.gz`** (**`deploy-website.yml`** merges into **`website/`**) |
 | Toolbox build | `matlab -batch "build_toolbox"` | Produces `USTB_v<version>.mltbx` |
 
 ---
