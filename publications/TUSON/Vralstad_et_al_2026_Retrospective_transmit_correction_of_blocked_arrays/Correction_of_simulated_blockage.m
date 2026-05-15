@@ -24,10 +24,12 @@ if exist('batchStartupOptionUsed', 'file') == 2 %#ok<*EXIST>
     end
 end
 if headless
-    hh_axes = @() axes(figure('Visible', 'off'));
-else
-    hh_axes = @() [];
+    set(groot, 'DefaultFigureVisible', 'off');
 end
+
+% Figures that must appear in MATLAB publish()+snapnow (-nodisplay) need Visible 'on' even in
+% headless mode; invisible + colorbar reliably drops snapshots for publish (triptych, diff maps).
+fv_publish = tools.headless_publish_figure_visible();
 %% Load data
 % Prefer Zenodo (CI); fall back to ustb.no mirrors — speckle_sim_FI_P4_* are not on Zenodo 19550715.
 local_path = [ustb_path(), '/data/'];
@@ -36,7 +38,10 @@ addpath(local_path);
 %% Speckle chamber ROI — three simulated blockage levels
 % Red rectangle matches gCNR `center_rectangle` = [-0.006, 0.07, 0.007, 0.04] m on the
 % Cartesian scan-converted grid (shown here in mm): [-6, 70, 7, 40].
-% Single `snapnow` with subplots — MATLAB publish captures one snapshot per publish cell.
+% Three panel images in **one figure** (`subplot(1,3,:)`): one embedded snapshot for this cell.
+% MATLAB publish() does not reliably embed snapshots for `beamformed_data.plot(ax, …)`
+% when `ax` belongs to an ad-hoc invisible figure axis handle; passing a explicit figure
+% (as in Save PNGs) works — see +tools/publish_beamformed_snap.
 speckle_chamber_mm = [-6, 70, 7, 40];
 dataset_roi = {
     'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', 'Full aperture (no element blockage)'
@@ -44,7 +49,7 @@ dataset_roi = {
     'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', 'Half of aperture blocked'
     };
 
-figure('Visible', 'off');
+figure('Visible', fv_publish);
 set(gcf, 'Position', [100, 100, 1200, 400]);
 for r = 1:size(dataset_roi, 1)
     fn_roi = dataset_roi{r, 1};
@@ -96,7 +101,8 @@ end
 set(findall(gcf, '-property', 'FontSize'), 'FontSize', 12);
 drawnow;
 snapnow;
-close(gcf);
+% Do not close figures here — `publish` snaps at cell boundaries and the next `close all`
+% would discard the ROI triptych before it is flushed to HTML.
 
 %% Primary case — full pipeline (paper figures, gCNR, differences): half aperture blocked
 filename = 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff';
@@ -148,11 +154,11 @@ mid.transmit_apodization.f_number=Fnumber;
 mid.transmit_apodization.minimum_aperture = 3e-3;
 b_data_RTB = mid.go();
 b_data_RTB.frame_rate = 20;
-b_data_RTB.plot(hh_axes(), 'RTB');
+tools.publish_beamformed_snap(b_data_RTB, 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot(hh_axes(), ['Tx Weights no shift'], [], 'none');
+tools.publish_beamformed_snap(b_data_tx_apod, ['Tx Weights no shift'], [], 'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -173,11 +179,11 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-b_data_RTB_comp.plot(hh_axes(), 'Proposed RTB');
+tools.publish_beamformed_snap(b_data_RTB_comp, 'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot(hh_axes(), ['Tx Weights with shift'], [], 'none');
+tools.publish_beamformed_snap(b_data_tx_apod, ['Tx Weights with shift'], [], 'none');
 colormap default;
 %% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
@@ -200,11 +206,11 @@ mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-b_data_delayed_REFoCUS.plot(hh_axes(), 'REFoCUS');
+tools.publish_beamformed_snap(b_data_delayed_REFoCUS, 'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
-b_data_REFoCUS.plot(hh_axes());
+tools.publish_beamformed_snap(b_data_REFoCUS);
 
 %% Save PNGs
 f = figure('Visible', 'off');
@@ -213,19 +219,24 @@ rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_', tag,'.png']);
+drawnow;
+snapnow;
 
 b_data_RTB_comp.plot(f,'RTB Compensated');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
 savefig(f,[storefolder,'RTB_compensated_', tag,'.fig']);
 saveas(f,[storefolder,'RTB_compensated_', tag,'.png']);
-
+drawnow;
+snapnow;
 
 b_data_REFoCUS.plot(f,'REFoCUS');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20])
 savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
 saveas(f,[storefolder,'REFoCUS_', tag,'.png']);
+drawnow;
+snapnow;
 
 %% Comparison cube (difference images; optional GIF when not headless)
 b_data_compare = uff.beamformed_data(b_data_RTB);
@@ -245,6 +256,20 @@ if ~headless
     b_data_compare.save_as_gif(['Figures/Comparison_', tag, '.gif']);
 else
     fprintf('[Correction_of_simulated_blockage] Skipping animated GIF (headless publish).\n');
+    % Still embed the three matched images in published HTML (publish ignores invisible figures without snapnow).
+    cmp_labs = {'RTB (amp. matched)', 'Proposed RTB', 'REFoCUS'};
+    for k = 1:3
+        bk = uff.beamformed_data(b_data_RTB);
+        bk.data = b_data_compare.data(:, 1, 1, k);
+        fh_cmp = figure('Visible', fv_publish);
+        bk.plot(fh_cmp, cmp_labs{k});
+        rectangle(gca, 'Position', [-6 5 7 105], 'EdgeColor', 'r', 'LineWidth', 2);
+        clim([-60 0]); xlim([-20 20]);
+        drawnow;
+        delete(findall(fh_cmp, 'Type', 'uicontrol'));
+        snapnow;
+        close(fh_cmp);
+    end
 end
 
 
@@ -272,7 +297,7 @@ end
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,2)-all_images(:,:,1)-1.6;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f = figure('Visible', 'off');
+f = figure('Visible', fv_publish);
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -282,12 +307,14 @@ ylim([60,110]);
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'RTBminusRTBcomp_',tag,'.fig']);
 saveas(f,[storefolder,'RTBminusRTBcomp_',tag,'.png']);
+drawnow;
+snapnow;
 
 %% Make Difference Images: RTB comp and REFoCUS 
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,2)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f = figure('Visible', 'off');
+f = figure('Visible', fv_publish);
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -298,12 +325,14 @@ ylim([60,110]);
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.fig']);
 saveas(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.png']);
+drawnow;
+snapnow;
 
 %% Make Difference Images: RTB and REFoCUS 
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,1)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f = figure('Visible', 'off');
+f = figure('Visible', fv_publish);
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -314,45 +343,6 @@ ylim([60,110]);
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'REFoCUSminusRTB_',tag,'.fig']);
 saveas(f,[storefolder,'REFoCUSminusRTB_',tag,'.png']);
+drawnow;
+snapnow;
 
-function correction_download_uff_with_fallbacks(filename, dst_dir)
-%Download UFF helper: Zenodo bundle first (CI), then legacy ustb.no hosts.
-
-    outfile = fullfile(dst_dir, filename);
-    if isfile(outfile)
-        return
-    end
-
-    bases = {
-        tools.zenodo_dataset_files_base()
-        'https://www.ustb.no/datasets'
-        'http://www.ustb.no/datasets'
-        'https://ustb.no/datasets'
-        'http://ustb.no/datasets'
-        'https://www.ultrasoundtoolbox.com/datasets'
-        };
-    lastME = [];
-
-    for k = 1:numel(bases)
-        base = strtrim(char(bases{k}));
-        if isempty(base)
-            continue
-        end
-        try
-            tools.download(filename, base, dst_dir);
-            if isfile(outfile)
-                return
-            end
-        catch ME
-            lastME = ME;
-        end
-    end
-
-    if ~isfile(outfile)
-        if ~isempty(lastME)
-            rethrow(lastME)
-        end
-        error('correction_download_uff_with_fallbacks:missing', ...
-            'Could not download ''%s'' from Zenodo or ustb mirrors.', filename);
-    end
-end

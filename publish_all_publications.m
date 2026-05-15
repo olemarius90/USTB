@@ -24,7 +24,8 @@ jobs = {
     };
 
 opts = struct('format', 'html', 'showCode', true, 'evalCode', true, ...
-    'catchError', true, 'createThumbnail', false, 'maxOutputLines', Inf);
+    'catchError', true, 'createThumbnail', false, 'maxOutputLines', Inf, ...
+    'figureSnapMethod', 'print');
 
 failed = {};
 
