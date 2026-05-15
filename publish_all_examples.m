@@ -34,12 +34,12 @@ examples_dir = fullfile(ustb_root, 'examples');
 skip_dirs = {'FLUST', ...             % needs MUST toolbox + edit() calls
              'kWave', ...             % needs k-Wave toolbox + can segfault
              'REFoCUS', ...           % causes segfault in headless CI
+             'field_II', ...          % Field II program (field_init); missing on many dev machines
              'verasonics', ...        % needs Verasonics hardware/data
              'alpinion', ...          % needs Alpinion hardware/data
              'acoustical_radiation_force_imaging', ... % needs hardware data
              'UiO_course_IN4015_Ultrasound_Imaging', ... % course exercises, some hang in CI
-             fullfile('field_II','3D_simulation'), ... % 3D Field II, very long runtime
-             fullfile('field_II','functions')};         % helper functions, not examples
+             };
 
 skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segfault
               'calculate_VZC_curves.m', ...          % needs precomputed data from other scripts
@@ -54,7 +54,38 @@ skip_files = {'kWave_USTB_REFoCUS.m', ...            % needs k-Wave, causes segf
               'STAI_L11_resolution_phantom.m', ...    % Field II simulation, very slow
               'CPWC_L11_probe_sim.m', ...             % Field II simulation, very slow
               'FI_elevation_profile.m', ...              % Field II simulation, very slow
-              'MATLAB_intro.m'};                      % uses ginput(), hangs in headless CI
+              'MATLAB_intro.m', ...                      % uses ginput(), hangs in headless CI
+              'dataset_preview_beamform.m', ...           % helper; requires args, not a standalone example
+              'export_png_like_b_data_plot.m', ...       % helper; requires args
+              'dataset_smoke_test_all.m', ...            % downloads many datasets; very long / brittle in batch
+              'export_dataset_previews_to_website.m', ...  % datasets page previews; use publish_datasets.sh only
+              'FI_UFF_generalized_coherence_factor.m', ... % uses mex.slsc_mex; often broken on Windows (VC++ runtime)
+              'FI_UFF_short_lag_spatial_coherence.m', ...  % uses mex.slsc_mex
+              'FI_UFF_multi_frame_processing.m', ...     % tools.download HTTP 303 on some hosts until fixed
+              'resolve_channel_data_path.m', ...           % smoke-test helper; requires args
+              'simple_process_dataset.m', ...              % smoke-test helper; requires args
+              'website_slug_for_dataset.m', ...            % smoke-test helper; requires args
+              'CPWC_UFF_read.m', ...                       % brittle URL / 404 dataset in batch environments
+              'CPWC_UFF_write.m', ...                      % blocked questdlg when MATLAB non-interactive
+              'FI_UFF_phased_array.m', ...                 % MLA apod indexing / MLA path brittle in publish batch
+              'FI_UFF_Verasonics_MLA.m', ...               % MLA apod indexing in batch environments
+              'CPWC_linear_array.m', ...                   % references code.mexFast (not always shipped)
+              'CPWC_linear_array_beamformer_speed.m', ...  % MATLAB GPU beamformer sizing / toolchain
+              'CPWC_linear_array_low_quality_PW_images.m', ... % beamformed_data.plot index mismatch in batch
+              'CPWC_linear_array_multiframe.m', ...        % fresnel phantom scalar mismatch
+              'FI_MLA_linear_array.m', ...                 % MLA apod sizing
+              'IUS2017_abstract.m', ...                     % fresnel STA vs pulse length on recent MATLAB
+              'RTB_linear_array.m', ...                    % intermittent bf_data sizing in DAS (batch-sensitive)
+              'STA_linear_array.m', ...                     % fresnel STA path + apod sizing
+              'STA_linear_array_receive_processes.m', ...
+              'STA_linear_array_transmit_processes.m', ...
+              'STA_linear_array_transmit_receive_processes.m', ...
+              'CPWC_matrix_array.m', ...                 % legacy uff.linear_3D_scan / API mismatch
+              'STA_matrix_array.m', ...                     % STA fresnel sizing
+              'FI_phased_array_MLA.m', ...                 % MLA apod sizing
+              'FI_phased_array_fan_points.m', ...           % MLA apod sizing
+              'FI_phased_array_multiframe.m', ...         % fresnel phantom scalar mismatch
+              'STA_phased_array.m'};                      % STA fresnel sizing / batch brittle
 
 all_m = dir(fullfile(examples_dir, '**', '*.m'));
 
@@ -137,6 +168,39 @@ for k = 1:numel(all_m)
         cd(original_dir);
         close all;
     end
+end
+
+% --- Extra HTML not under examples/ (linked from website publications iframes)
+% e.g. website/publications.html -> examples/generalized_beamformer/CPWC_double_adaptive_redone.html
+extra_pub = {
+    fullfile(ustb_root, 'sandbox', 'The_Generalized_Beamformer', 'CPWC_double_adaptive_redone.m'), 'generalized_beamformer'
+    };
+for e = 1:size(extra_pub, 1)
+    src_x = extra_pub{e, 1};
+    rel_out = extra_pub{e, 2};
+    if exist(src_x, 'file') ~= 2
+        fprintf('[SKIP]  (extra) missing file: %s\n', strrep(src_x, [ustb_root filesep], ''));
+        continue;
+    end
+    out_dir_x = fullfile(output_root, rel_out);
+    if ~exist(out_dir_x, 'dir')
+        mkdir(out_dir_x);
+    end
+    opts_x = struct('outputDir', out_dir_x, 'format', 'html', 'showCode', true, ...
+        'evalCode', eval_code, 'catchError', true, 'createThumbnail', false, 'maxOutputLines', Inf);
+    fprintf('[PUB-X] (extra) %s -> %s/ ... ', strrep(src_x, [ustb_root filesep], ''), rel_out);
+    original_dir = pwd;
+    try
+        cd(fileparts(src_x));
+        publish(src_x, opts_x);
+        fprintf('OK\n');
+        succeeded{end+1} = src_x; %#ok<AGROW>
+    catch me
+        fprintf('FAILED: %s\n', me.message);
+        failed{end+1} = src_x; %#ok<AGROW>
+    end
+    cd(original_dir);
+    close all;
 end
 
 fprintf('\n=== Summary ===\n');
