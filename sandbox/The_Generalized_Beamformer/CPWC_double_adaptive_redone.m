@@ -16,6 +16,17 @@
 
 clear all;
 close all;
+% Publish / -batch: invisible figures avoid uicontrol print failures with beamformed_data.plot
+headless = ~usejava('desktop');
+if exist('batchStartupOptionUsed', 'file') == 2
+    try %#ok<*TRYNC>
+        headless = headless | batchStartupOptionUsed;
+    catch
+    end
+end
+if headless
+    set(groot, 'DefaultFigureVisible', 'off');
+end
 
 %% Download and load channel data
 url = tools.zenodo_dataset_files_base();
@@ -215,7 +226,7 @@ adapt_rx.regCoef = 1/100;
 
 % Step 1: DAS on transmit only
 das.dimension = dimension.transmit;
-das.receive_apodization = receive_apodization_none_window
+das.receive_apodization = receive_apodization_none_window;
 
 tic();
 b_data_das = das.go();
