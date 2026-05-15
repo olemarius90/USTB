@@ -75,6 +75,7 @@ FOLDER_LABELS = {
     "generalized_beamformer": "The Generalized Beamformer (sandbox)",
     "kWave": "k-Wave Simulations",
     "picmus": "PICMUS Challenge",
+    "publications": "Publication HTML (linked from publications.html)",
     "REFoCUS": "REFoCUS",
     "uff": "UFF File Format",
     "UiO_course_IN4015_Ultrasound_Imaging": "UiO Course IN4015",
