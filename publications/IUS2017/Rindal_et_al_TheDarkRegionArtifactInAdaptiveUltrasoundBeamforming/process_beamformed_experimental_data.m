@@ -6,6 +6,18 @@
 
 clear all;close all
 
+% Publish / headless MATLAB: invisible figures avoid uicontrol print failures.
+headless = ~usejava('desktop');
+if exist('batchStartupOptionUsed', 'file') == 2
+    try %#ok<*TRYNC>
+        headless = headless | batchStartupOptionUsed;
+    catch
+    end
+end
+if headless
+    set(groot, 'DefaultFigureVisible', 'off');
+end
+
 % data location
 url='http://ustb.no/datasets/';      % if not found downloaded from here
 local_path = [ustb_path(),'/data/']; % location of example data

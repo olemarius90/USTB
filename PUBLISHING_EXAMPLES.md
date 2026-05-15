@@ -7,7 +7,7 @@ Pre-built MATLAB content is uploaded **separately** as three release assets (`ex
 | Script | Artifact | Contents / deploy target |
 |---|---|---|
 | `./publish_examples.sh` | **`examples-html.tar.gz`** | `publish_all_examples.m` gallery → **`website/examples/`** |
-| `./publish_publications.sh` | **`publications-html.tar.gz`** | TUSON (etc.) MATLAB `publish` output → merged into **`website/examples/`** (e.g. `TUSON/`) |
+| `./publish_publications.sh` | **`publications-html.tar.gz`** | **`publish_all_publications.m`** (all **`publications.html`** iframes) → **`website/examples/publications/`** |
 | `./publish_datasets.sh` | **`datasets-html.tar.gz`** | `export_dataset_previews_to_website` PNGs + `build_datasets_page.py` → **`website/`** root (`datasets.html`, `assets/images/datasets/`)
 
 Shared MATLAB flags / Git Bash paths: **`publish_common.sh`** (sourced automatically).
@@ -48,38 +48,28 @@ mex('-R2018a', '-D_UNIX_', '-I/usr/include/tbb', ...
 2. Outputs with **`Error using` / `Error in `** in the HTML body are stripped by `publish_examples.sh`
 3. `generate_examples_index.py` writes `index.html`
 4. Pack → **`examples-html.tar.gz`**, upload alongside the other two assets on **`examples-v1`**
-5. **`deploy-website.yml`** downloads **three** `.tar.gz` files (primary repo, then **`olemarius90/USTB`** fallback): examples → `website/examples/`; publications → `website/examples/` (overlay); datasets → **`website/`** overlay.
+5. **`deploy-website.yml`** downloads **three** `.tar.gz` files (primary repo, then **`olemarius90/USTB`** fallback): examples → `website/examples/`; publications subtree → **`website/examples/publications/`**; datasets → **`website/`** overlay.
 
 
 ## Publications page (`publications.html`)
 
-Some iframes load HTML that is **not** under `examples/` in the repository (source lives in `sandbox/`). Those are published by **`publish_all_examples.m`** into the same `examples_html/` tree so the deployed path matches the site, e.g.:
+Every **`iframe`** on **`website/publications.html`** is produced by **`publish_all_publications.m`** (**`./publish_publications.sh`**) and deployed under **`website/examples/publications/`** (paths below are relative to that folder; site URLs use **`examples/publications/…`**).
 
-| Website path | Source in repo |
+| Output HTML | Source `.m` |
 |---|---|
-| `examples/generalized_beamformer/CPWC_double_adaptive_redone.html` | `sandbox/The_Generalized_Beamformer/CPWC_double_adaptive_redone.m` |
-
-After changing `publish_all_examples.m`, run `./publish_examples.sh` and upload **`examples-html.tar.gz`** to the **`examples-v1`** release on **`unioslo/USTB`** (and rely on CI `curl` fallback to your fork if needed).
-
-```bash
-./publish_examples.sh
-./publish_examples.sh --upload unioslo/USTB
-```
-
-Then trigger **Deploy Website** on `unioslo/USTB` `master` (or merge the workflow paths fix) so GitHub Pages picks up the new tarball.
-
-### Publication pages (`publications/`, TUSON, etc.)
-
-Scripts under `publications/` are **not** part of `publish_all_examples` (they live outside `examples/`). Build and upload them with:
+| `preprint/generalized_beamformer/CPWC_double_adaptive_redone.html` | `sandbox/The_Generalized_Beamformer/CPWC_double_adaptive_redone.m` |
+| `TUSON/Vralstad_et_al_2026_Retrospective_transmit_correction_of_blocked_arrays/Correction_of_simulated_blockage.html` | `publications/TUSON/Vralstad_et_al_2026_Retrospective_transmit_correction_of_blocked_arrays/Correction_of_simulated_blockage.m` |
+| `TUFFC/Dynamic_range_2020/dynamic_range_test.html` | `publications/DynamicRange/dynamic_range_test.m` |
+| `TUFFC/Prieur_fDMAS_2018/FI_UFF_FIeldII_simulations_Fig2_and_Fig3.html` | `publications/TUFFC/Prieur_et_al_Signal_coherence_and_image_amplitude_with_the_fDMAS/FI_UFF_FIeldII_simulations_Fig2_and_Fig3.m` |
+| `IUS/2018_virtual_source_model/Proceedings_FI_UFF_Verasonics_RTB_delay_models.html` | `publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Proceedings_FI_UFF_Verasonics_RTB_delay_models.m` |
+| `IUS/2017_dark_region_artifact/process_beamformed_experimental_data.html` | `publications/IUS2017/Rindal_et_al_TheDarkRegionArtifactInAdaptiveUltrasoundBeamforming/process_beamformed_experimental_data.m` |
 
 ```bash
 ./publish_publications.sh
-./publish_publications.sh --upload
-# Or for the upstream repo:
 ./publish_publications.sh --upload unioslo/USTB
 ```
 
-This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) on **`examples-v1`**. **`deploy-website.yml`** overlays it onto **`website/examples/`** **after** the examples tarball, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` match the **`publications.html`** iframes.
+Upload **`publications-html.tar.gz`** to **`examples-v1`**, then run **Deploy Website**.
 
 ### Dataset page (`datasets.html` + PNGs)
 
@@ -91,19 +81,6 @@ Run **`./publish_datasets.sh`** (then **`--upload`**). That produces **`datasets
 - MATLAB prints **"Unrecognized command line option: nodisplay"** if you use **Linux-only** `-nodisplay`. `publish_examples.sh` omits that flag when **Windows** is detected (`WINDIR` / `SYSTEMROOT`, or `OSTYPE` msys/cygwin/mingw) and only adds it on real Linux/macOS shells.
 - **`slsc_mex.mexw64`** errors ("side-by-side configuration is incorrect") mean a **Visual C++ runtime** mismatch — reinstall the MSVC redist MATLAB ships with, or **rebuild** `+mex/slsc_mex` from source. Examples that depend on SLSC are **skipped** in `publish_all_examples.m` until the MEX loads.
 - **`export_dataset_previews_to_website.m`** is **not** part of `./publish_examples.sh` — use **`./publish_datasets.sh`**.
-
-### Publication pages (TUSON, etc.)
-
-Scripts under `publications/` are **not** part of `publish_all_examples` (they live outside `examples/`). Build and upload them with:
-
-```bash
-./publish_publications.sh
-./publish_publications.sh --upload
-# Or for the upstream repo:
-./publish_publications.sh --upload unioslo/USTB
-```
-
-This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and uploads it to the same **`examples-v1`** release. The site workflow extracts it into `website/examples/` **after** `examples-html.tar.gz`, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` are served from the release, not from git.
 
 ## Manual Steps
 

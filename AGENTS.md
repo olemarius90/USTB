@@ -34,7 +34,7 @@ USTB (UltraSound ToolBox) is an open-source toolbox for beamforming, processing,
 | Python integration tests | `cd python && pytest tests/test_integration_matlab.py tests/test_examples_vs_matlab.py` | Requires MATLAB reference HDF5 files and datasets |
 | Sphinx docs build | `sphinx-build -b html docs docs/_build/html` | Python 3 + `pip install -r docs/requirements.txt` |
 | Website preview | `cd website && python3 -m http.server 8090` | Static site, no build step |
-| Pages release overlays | `./publish_examples.sh`, `./publish_publications.sh`, `./publish_datasets.sh` (**`PUBLISHING_EXAMPLES.md`**) | Three **`examples-v1`** assets: **`examples-html.tar.gz`**, **`publications-html.tar.gz`**, **`datasets-html.tar.gz`** (**`deploy-website.yml`** overlays **`website/`**). Download prefers the repo’s **`examples-v1`** release, then **`olemarius90/USTB`**. **`publish_publications.sh`** aborts packaging if MATLAB error strings appear in published HTML (**Zenodo `19550715`** + **`ustb.no`** access is typical for **`speckle_sim_FI_P4_*`** in the T‑USON blocked‑array demo). |
+| Pages release overlays | `./publish_examples.sh`, `./publish_publications.sh`, `./publish_datasets.sh` (**`PUBLISHING_EXAMPLES.md`**) | Three **`examples-v1`** assets; **`publish_publications.sh`** runs **`publish_all_publications.m`** → **`website/examples/publications/`** (iframes on **`website/publications.html`**). **`deploy-website.yml`** prefers primary **`examples-v1`**, then **`olemarius90/USTB`**. **`publish_publications.sh`** aborts if outputs are missing or HTML contains MATLAB error text (**Zenodo** / **`ustb.no`** needed for several datasets). |
 | Toolbox build | `matlab -batch "build_toolbox"` | Produces `USTB_v<version>.mltbx` |
 
 ---

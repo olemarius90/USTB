@@ -79,34 +79,46 @@ jobs:
           gzip -t /tmp/examples-html.tar.gz
           tar -xzf /tmp/examples-html.tar.gz -C website/examples
 
-      # Verify archive *contents* after extract: a wrong file can be 200+valid gzip (e.g. misnamed asset)
+      # Verify archive *contents* after extract: all publication iframes on website/publications.html
       - name: Download publication pages
         run: |
           set -e
           STAGE="/tmp/publications-staging"
-          EXPECTED="publications/TUSON/Vralstad_et_al_2026_Retrospective_transmit_correction_of_blocked_arrays/Correction_of_simulated_blockage.html"
           PRIMARY="https://github.com/${{ github.repository }}/releases/download/examples-v1/publications-html.tar.gz"
           FALLBACK="https://github.com/olemarius90/USTB/releases/download/examples-v1/publications-html.tar.gz"
+          EXPECTED=(
+            publications/preprint/generalized_beamformer/CPWC_double_adaptive_redone.html
+            publications/TUSON/Vralstad_et_al_2026_Retrospective_transmit_correction_of_blocked_arrays/Correction_of_simulated_blockage.html
+            publications/TUFFC/Dynamic_range_2020/dynamic_range_test.html
+            publications/TUFFC/Prieur_fDMAS_2018/FI_UFF_FIeldII_simulations_Fig2_and_Fig3.html
+            publications/IUS/2018_virtual_source_model/Proceedings_FI_UFF_Verasonics_RTB_delay_models.html
+            publications/IUS/2017_dark_region_artifact/process_beamformed_experimental_data.html
+          )
           try_publications() {
             local url="$1"
             rm -rf "$STAGE" && mkdir -p "$STAGE"
             curl -fL --retry 2 --connect-timeout 20 -S -o /tmp/publications-html.tar.gz "$url"
             gzip -t /tmp/publications-html.tar.gz
             tar -xzf /tmp/publications-html.tar.gz -C "$STAGE"
-            # with set -e, bare [ -f ... ] would exit the whole script on miss
-            if [ -f "$STAGE/$EXPECTED" ]; then return 0; else return 1; fi
+            local ok=1
+            for f in "${EXPECTED[@]}"; do
+              if [ ! -f "$STAGE/$f" ]; then
+                echo "missing in bundle: $f"
+                ok=0
+              fi
+            done
+            [ "$ok" -eq 1 ]
           }
-          mkdir -p website/examples
+          mkdir -p website/examples/publications
           if try_publications "$PRIMARY"; then
             echo "publications: using primary release asset"
           elif try_publications "$FALLBACK"; then
             echo "publications: primary missing or wrong bundle; used olemarius90/USTB"
           else
-            echo "::error::publications-html.tar.gz must contain ${EXPECTED}"
+            echo "::error::publications-html.tar.gz must contain all publication iframe targets"
             exit 1
           fi
-          # Tarball root is publications/TUSON/... ; site iframes use examples/TUSON/...
-          cp -a "$STAGE/publications/TUSON" website/examples/
+          cp -a "$STAGE/publications/." website/examples/publications/
 
       # --- Dataset page (datasets.html + assets/images/datasets/*.png) ---
       - name: Download dataset previews bundle
