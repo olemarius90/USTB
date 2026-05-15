@@ -50,6 +50,10 @@ for f in $(find "${OUTPUT_DIR}" -name "*.html"); do
     fi
 done
 echo "Marked ${ERROR_COUNT} HTML file(s) with errors (see grep above)"
+if [ "${ERROR_COUNT}" -gt 0 ]; then
+    echo "Aborting: fix the script or published output before packaging (no tarball)." >&2
+    exit 1
+fi
 
 cd "${OUTPUT_DIR}" && tar -czf "${SCRIPT_DIR}/${TARBALL}" . && cd "${SCRIPT_DIR}"
 echo ""

@@ -17,17 +17,26 @@
 clear all; close all;
 % Headless / publish / CI: no interactive ROI drawing; no demod figure
 headless = ~usejava('desktop');
+if exist('batchStartupOptionUsed', 'file') == 2 %#ok<*EXIST>
+    try
+        headless = headless | batchStartupOptionUsed;
+    catch
+    end
+end
+if headless
+    hh_axes = @() axes(figure('Visible', 'off'));
+else
+    hh_axes = @() [];
+end
 %% Load data
-% Read the data; download if missing (USTB example datasets on Zenodo)
-url = tools.zenodo_dataset_files_base();
+% Prefer Zenodo (CI); fall back to ustb.no mirrors — speckle_sim_FI_P4_* are not on Zenodo 19550715.
 local_path = [ustb_path(), '/data/'];
 addpath(local_path);
 
-%% Speckle chamber ROI — all simulated blockage levels (published HTML uses snapnow)
+%% Speckle chamber ROI — three simulated blockage levels
 % Red rectangle matches gCNR `center_rectangle` = [-0.006, 0.07, 0.007, 0.04] m on the
 % Cartesian scan-converted grid (shown here in mm): [-6, 70, 7, 40].
-% Lightweight RTB-only pass per dataset so publish stays tractable.
-
+% Single `snapnow` with subplots — MATLAB publish captures one snapshot per publish cell.
 speckle_chamber_mm = [-6, 70, 7, 40];
 dataset_roi = {
     'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', 'Full aperture (no element blockage)'
@@ -35,10 +44,12 @@ dataset_roi = {
     'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', 'Half of aperture blocked'
     };
 
+figure('Visible', 'off');
+set(gcf, 'Position', [100, 100, 1200, 400]);
 for r = 1:size(dataset_roi, 1)
     fn_roi = dataset_roi{r, 1};
     roi_title = dataset_roi{r, 2};
-    tools.download(fn_roi, url, data_path());
+    correction_download_uff_with_fallbacks(fn_roi, data_path());
     cd_roi = uff.read_object([data_path(), filesep, fn_roi], '/channel_data');
     cd_roi.data = cd_roi.data ./ max(cd_roi.data(:));
 
@@ -68,9 +79,9 @@ for r = 1:size(dataset_roi, 1)
 
     [RTB_sc_roi, Xr, Zr] = tools.scan_convert(b_roi.get_image(), b_roi.scan.azimuth_axis, b_roi.scan.depth_axis, 1024, 1024);
 
-    figure('Visible', 'off');
+    subplot(1, 3, r);
     imagesc(Xr * 1e3, Zr * 1e3, RTB_sc_roi, [-60 0]);
-    colormap gray;
+    colormap(gca, gray);
     colorbar;
     axis image;
     xlabel('x [mm]');
@@ -81,16 +92,16 @@ for r = 1:size(dataset_roi, 1)
     hold on;
     rectangle(gca, 'Position', speckle_chamber_mm, 'EdgeColor', 'r', 'LineWidth', 2);
     hold off;
-    set(findall(gcf, '-property', 'FontSize'), 'FontSize', 14);
-    drawnow;
-    snapnow;
-    close(gcf);
 end
+set(findall(gcf, '-property', 'FontSize'), 'FontSize', 12);
+drawnow;
+snapnow;
+close(gcf);
 
 %% Primary case — full pipeline (paper figures, gCNR, differences): half aperture blocked
 filename = 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff';
 tag = 'half';
-tools.download(filename, url, data_path());
+correction_download_uff_with_fallbacks(filename, data_path());
 
 channel_data = uff.read_object([data_path(), filesep, filename], '/channel_data');
 channel_data.data = channel_data.data ./ max(channel_data.data(:));
@@ -137,11 +148,11 @@ mid.transmit_apodization.f_number=Fnumber;
 mid.transmit_apodization.minimum_aperture = 3e-3;
 b_data_RTB = mid.go();
 b_data_RTB.frame_rate = 20;
-b_data_RTB.plot([], 'RTB');
+b_data_RTB.plot(hh_axes(), 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights no shift'],[],'none');
+b_data_tx_apod.plot(hh_axes(), ['Tx Weights no shift'], [], 'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -162,11 +173,11 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-b_data_RTB_comp.plot([],'Proposed RTB');
+b_data_RTB_comp.plot(hh_axes(), 'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-b_data_tx_apod.plot([],['Tx Weights with shift'],[],'none');
+b_data_tx_apod.plot(hh_axes(), ['Tx Weights with shift'], [], 'none');
 colormap default;
 %% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
@@ -189,14 +200,14 @@ mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-b_data_delayed_REFoCUS.plot([],'REFoCUS');
+b_data_delayed_REFoCUS.plot(hh_axes(), 'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
-b_data_REFoCUS.plot();
+b_data_REFoCUS.plot(hh_axes());
 
 %% Save PNGs
-f = figure;
+f = figure('Visible', 'off');
 b_data_RTB.plot(f,'RTB');
 rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
 clim([-60 0]);xlim([-20 20]);
@@ -216,21 +227,25 @@ clim([-60 0]);xlim([-20 20])
 savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
 saveas(f,[storefolder,'REFoCUS_', tag,'.png']);
 
-%% Save GIF
+%% Comparison cube (difference images; optional GIF when not headless)
 b_data_compare = uff.beamformed_data(b_data_RTB);
-b_data_compare.data(:,1,1,1) = b_data_RTB.data./max(b_data_RTB.data(:));
-b_data_compare.data(:,1,1,2) = b_data_RTB_comp.data./max(b_data_RTB_comp.data(:));
-b_data_compare.data(:,1,1,3) = b_data_REFoCUS.data./max(b_data_REFoCUS.data(:))/3;
+b_data_compare.data(:, 1, 1, 1) = b_data_RTB.data ./ max(b_data_RTB.data(:));
+b_data_compare.data(:, 1, 1, 2) = b_data_RTB_comp.data ./ max(b_data_RTB_comp.data(:));
+b_data_compare.data(:, 1, 1, 3) = b_data_REFoCUS.data ./ max(b_data_REFoCUS.data(:)) / 3;
+all_images_cmp = squeeze(b_data_compare.get_image());
+b_data_compare.data(:, 1, 1, 2) = b_data_compare.data(:, 1, 1, 2) .* median(all_images_cmp(:, :, 1) ./ all_images_cmp(:, :, 2), 'all', 'omitnan');
+b_data_compare.data(:, 1, 1, 3) = b_data_compare.data(:, 1, 1, 3) .* median(all_images_cmp(:, :, 1) ./ all_images_cmp(:, :, 3), 'all', 'omitnan');
 
-all_images = squeeze(b_data_compare.get_image());
-b_data_compare.data(:,1,1,2) = b_data_compare.data(:,1,1,2) .* median(all_images(:,:,1)./all_images(:,:,2),'all','omitnan');
-b_data_compare.data(:,1,1,3) = b_data_compare.data(:,1,1,3) .* median(all_images(:,:,1)./all_images(:,:,3),'all','omitnan');
-b_data_compare.frame_rate = 1;
-b_data_compare.plot([]); %title('1:RTB,2:Comp,3:REFoCUS')
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20]);
-b_data_compare.frame_rate = 1;
-b_data_compare.save_as_gif(['Figures/Comparison_',tag,'.gif']);
+if ~headless
+    b_data_compare.frame_rate = 1;
+    b_data_compare.plot([]);
+    rectangle(gca, 'Position', [-6 5 7 105], 'EdgeColor', 'r', 'LineWidth', 2)
+    clim([-60 0]); xlim([-20 20]);
+    b_data_compare.frame_rate = 1;
+    b_data_compare.save_as_gif(['Figures/Comparison_', tag, '.gif']);
+else
+    fprintf('[Correction_of_simulated_blockage] Skipping animated GIF (headless publish).\n');
+end
 
 
 %% Measure contrast (interactive drawrectangle; skipped in headless publish/CI)
@@ -257,7 +272,7 @@ end
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,2)-all_images(:,:,1)-1.6;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f =figure;
+f = figure('Visible', 'off');
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -272,7 +287,7 @@ saveas(f,[storefolder,'RTBminusRTBcomp_',tag,'.png']);
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,2)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f = figure();
+f = figure('Visible', 'off');
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -288,7 +303,7 @@ saveas(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.png']);
 all_images = b_data_compare.get_image();
 diff = all_images(:,:,3)-all_images(:,:,1)-7;
 [diff_sc, Xs,Zs] = tools.scan_convert(diff, scan.azimuth_axis, scan.depth_axis,1024,1024);
-f = figure();
+f = figure('Visible', 'off');
 imagesc(Xs*1e3,Zs*1e3,diff_sc,[-30,30]);colormap(bluewhitered);colorbar
 xlabel('x[mm]')
 ylabel('z[mm]')
@@ -299,3 +314,45 @@ ylim([60,110]);
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'REFoCUSminusRTB_',tag,'.fig']);
 saveas(f,[storefolder,'REFoCUSminusRTB_',tag,'.png']);
+
+function correction_download_uff_with_fallbacks(filename, dst_dir)
+%Download UFF helper: Zenodo bundle first (CI), then legacy ustb.no hosts.
+
+    outfile = fullfile(dst_dir, filename);
+    if isfile(outfile)
+        return
+    end
+
+    bases = {
+        tools.zenodo_dataset_files_base()
+        'https://www.ustb.no/datasets'
+        'http://www.ustb.no/datasets'
+        'https://ustb.no/datasets'
+        'http://ustb.no/datasets'
+        'https://www.ultrasoundtoolbox.com/datasets'
+        };
+    lastME = [];
+
+    for k = 1:numel(bases)
+        base = strtrim(char(bases{k}));
+        if isempty(base)
+            continue
+        end
+        try
+            tools.download(filename, base, dst_dir);
+            if isfile(outfile)
+                return
+            end
+        catch ME
+            lastME = ME;
+        end
+    end
+
+    if ~isfile(outfile)
+        if ~isempty(lastME)
+            rethrow(lastME)
+        end
+        error('correction_download_uff_with_fallbacks:missing', ...
+            'Could not download ''%s'' from Zenodo or ustb mirrors.', filename);
+    end
+end

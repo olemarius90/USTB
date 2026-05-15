@@ -92,6 +92,19 @@ Run **`./publish_datasets.sh`** (then **`--upload`**). That produces **`datasets
 - **`slsc_mex.mexw64`** errors ("side-by-side configuration is incorrect") mean a **Visual C++ runtime** mismatch — reinstall the MSVC redist MATLAB ships with, or **rebuild** `+mex/slsc_mex` from source. Examples that depend on SLSC are **skipped** in `publish_all_examples.m` until the MEX loads.
 - **`export_dataset_previews_to_website.m`** is **not** part of `./publish_examples.sh` — use **`./publish_datasets.sh`**.
 
+### Publication pages (TUSON, etc.)
+
+Scripts under `publications/` are **not** part of `publish_all_examples` (they live outside `examples/`). Build and upload them with:
+
+```bash
+./publish_publications.sh
+./publish_publications.sh --upload
+# Or for the upstream repo:
+./publish_publications.sh --upload unioslo/USTB
+```
+
+This produces `publications-html.tar.gz` (HTML + `publish()` figure PNGs) and uploads it to the same **`examples-v1`** release. The site workflow extracts it into `website/examples/` **after** `examples-html.tar.gz`, so paths like `website/examples/TUSON/.../Correction_of_simulated_blockage.html` are served from the release, not from git.
+
 ## Manual Steps
 
 ```bash
