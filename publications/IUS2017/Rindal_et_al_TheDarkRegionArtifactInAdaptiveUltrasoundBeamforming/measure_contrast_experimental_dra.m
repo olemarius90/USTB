@@ -28,7 +28,12 @@ idx_speckle = idx_speckle_outer;
 
 f1 = figure(1111); %#ok<*FIGLEG>
 clf(f1);
-set(f1, 'Position', [100, 100, 300, 300], 'Visible', tools.headless_publish_figure_visible());
+set(f1, 'Position', [100, 100, 300, 300]);
+if strcmp(tools.headless_publish_figure_visible(), 'on')
+    set(f1, 'Visible', 'on');
+elseif ~usejava('desktop')
+    set(f1, 'Visible', 'off');
+end
 imagesc(sta_image.scan.x_axis*1e3,sta_image.scan.z_axis*1e3,image.all{1});
 colormap gray; caxis([-60 0]); axis image; xlabel('x [mm]');ylabel('y [mm]');
 %colorbar

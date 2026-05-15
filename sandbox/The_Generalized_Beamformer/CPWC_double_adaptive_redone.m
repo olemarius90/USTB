@@ -16,7 +16,7 @@
 
 clear all;
 close all;
-% Publish (-batch/-nodisplay): visible root/default figures snapshot reliably into HTML.
+% Publish (-batch/-nodisplay): visible root figures snapshot reliably into HTML.
 if strcmp(tools.headless_publish_figure_visible(), 'on')
     set(groot, 'DefaultFigureVisible', 'on');
 end

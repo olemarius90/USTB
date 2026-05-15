@@ -6,7 +6,7 @@
 
 clear all;close all
 
-% MATLAB publish / -batch needs visible root figures for snapshots
+% MATLAB publish / -batch: root figures visible so HTML snapshots are not skipped
 if strcmp(tools.headless_publish_figure_visible(), 'on')
     set(groot, 'DefaultFigureVisible', 'on');
 end
