@@ -22,6 +22,10 @@
 
 clear all; close all;
 
+if strcmp(tools.headless_publish_figure_visible(), 'on')
+    set(groot, 'DefaultFigureVisible', 'on');
+end
+
 % data location
 url = tools.zenodo_dataset_files_base();
 
@@ -53,16 +57,17 @@ b_data=mid.go();
 
 %% Display the Conventional Scanline Image
 % This creates the image for Fig. 3a and 4a.
-b_data.plot([],'Conventional one scanline per transmit');
+tools.publish_beamformed_snap(b_data, 'Conventional one scanline per transmit');
 
 f456 = figure(456);clf;
 imagesc(scan.x_axis*1000,z_axis*1000,b_data.get_image);
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_conventional.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_conventional.eps'],'eps2c')
 axis([5 12 26 36])
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_conventional_zoomed.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_conventional_zoomed.eps'],'eps2c')
+tools.publish_snap_now_figure(f456);
 
 
 %% Create scan with MLA's
@@ -90,7 +95,7 @@ mid_RTB_spherical_model.receive_apodization.window=uff.window.boxcar;
 mid_RTB_spherical_model.receive_apodization.f_number=1.7;
 b_data_RTB=mid_RTB_spherical_model.go();
 
-b_data_RTB.plot(767,'Single transmit images from spherical model')
+tools.publish_beamformed_snap(b_data_RTB, 'Single transmit images from spherical model')
 
 %% Show and save the individual transmit image from the convetional spherical model
 % This creates the image in Fig. 7a.
@@ -102,7 +107,8 @@ imagesc(scan_RTB.x_axis*1000,z_axis*1000,db(abs(img(:,:,tx)./max(max(img(:,:,tx)
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to apply the tukey window on the individual transmit images
 % This creates the images in Fig. 8a.
@@ -116,14 +122,15 @@ colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
 axis([-2 -0.1 26 33])
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/vs_zoomed_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/vs_zoomed_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to create the full RTB image from the spherical model
 mid_RTB_spherical_model.dimension = dimension.both();
 mid_RTB_spherical_model.transmit_apodization.window=uff.window.tukey25;
 b_data_RTB=mid_RTB_spherical_model.go();
 
-b_data_RTB.plot(768,'RTB image using virtual source model');
+tools.publish_beamformed_snap(b_data_RTB, 'RTB image using virtual source model');
 
 % We need to compensate with the TX transmit apodization as weighting to
 % get a more uniform image
@@ -132,7 +139,7 @@ tx_apod = mid_RTB_spherical_model.transmit_apodization.data;
 
 b_data_RTB_weighted = uff.beamformed_data(b_data_RTB);
 b_data_RTB_weighted.data = b_data_RTB_weighted.data.*(1./sum(tx_apod,2));
-b_data_RTB_weighted.plot(10,'RTB image using virtual source model, TX weighted');
+tools.publish_beamformed_snap(b_data_RTB_weighted, 'RTB image using virtual source model, TX weighted');
 
 %%
 % After compensating with TX transmit apodization as weighting we get the
@@ -142,9 +149,10 @@ imagesc(scan_RTB.x_axis*1000,z_axis*1000,b_data_RTB_weighted.get_image);
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs.eps'],'eps2c')
 axis([5 12 26 36])
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs_zoomed.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_vs_zoomed.eps'],'eps2c')
+tools.publish_snap_now_figure(f456);
 
 %%
 % Notice the line/articat along 29.6 mm, the transmit focus, which is 
@@ -182,7 +190,8 @@ imagesc(scan_RTB.x_axis*1000,z_axis*1000,db(abs(img(:,:,tx)./max(max(img(:,:,tx)
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to apply the tukey window on the individual transmit images
 % This creates the images in Fig. 8b.
@@ -196,7 +205,8 @@ colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
 axis([-2 -0.1 26 33])
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/unified_zoomed_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/unified_zoomed_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to create the full RTB image from the unified model
 mid_RTB_unified_model.dimension = dimension.both();
@@ -210,16 +220,17 @@ tx_apod = mid_RTB_unified_model.transmit_apodization.data;
 b_data_RTB_unified_fix_weighted = uff.beamformed_data(b_data_RTB_unified);
 b_data_RTB_unified_fix_weighted.data = b_data_RTB_unified_fix_weighted.data...
                                                         .*(1./sum(tx_apod,2));
-b_data_RTB_unified_fix_weighted.plot(11,'RTB image Nguyen & Prager mode');
+tools.publish_beamformed_snap(b_data_RTB_unified_fix_weighted, 'RTB image Nguyen & Prager mode');
 
 f456 = figure(456);clf
 imagesc(scan_RTB.x_axis*1000,z_axis*1000,b_data_RTB_unified_fix_weighted.get_image);
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified.eps'],'eps2c')
 axis([5 12 26 36])
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified_zoomed.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_unified_zoomed.eps'],'eps2c')
+tools.publish_snap_now_figure(f456);
 
 %%
 % Their model sucessfully removes the artifact at focus (29.6 mm)!
@@ -258,7 +269,8 @@ imagesc(scan_RTB.x_axis*1000,z_axis*1000,db(abs(img(:,:,tx)./max(max(img(:,:,tx)
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to apply the tukey window on the individual transmit images
 % This creates the images in Fig. 8c.
@@ -272,7 +284,8 @@ colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
 axis([-2 -0.1 26 33])
-saveas(f556,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/hybrid_zoomed_single_tx.eps'],'eps2c')
+saveas(f556,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/hybrid_zoomed_single_tx.eps'],'eps2c')
+tools.publish_snap_now_figure(f556);
 
 %% Adjust the beamforming to create the full RTB image from our hybrid model
 mid_RTB_with_plane_model.dimension = dimension.both();
@@ -287,16 +300,17 @@ tx_apod = mid_RTB_with_plane_model.transmit_apodization.data;
 b_data_RTB_plane_fix_weighted = uff.beamformed_data(b_data_RTB_with_plane);
 b_data_RTB_plane_fix_weighted.data = b_data_RTB_plane_fix_weighted.data...
                                                         .*(1./sum(tx_apod,2));
-b_data_RTB_plane_fix_weighted.plot(10,'RTB image with PW hybrid virtual source model');
+tools.publish_beamformed_snap(b_data_RTB_plane_fix_weighted, 'RTB image with PW hybrid virtual source model');
 
 f459 = figure(459);clf;
 imagesc(scan_RTB.x_axis*1000,z_axis*1000,b_data_RTB_plane_fix_weighted.get_image);
 colormap gray; caxis([-60 0]); axis image;
 xlabel('x[mm]');ylabel('z[mm]');
 set(gca,'Fontsize',15)
-saveas(f459,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid.eps'],'eps2c')
+saveas(f459,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid.eps'],'eps2c')
 axis([5 12 26 36])
-saveas(f459,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid_zoomed.eps'],'eps2c')
+saveas(f459,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/full_image_hybrid_zoomed.eps'],'eps2c')
+tools.publish_snap_now_figure(f459);
 
 %%
 % Our simple  model also removes the artifact
@@ -317,7 +331,8 @@ xlim([-5 4]);legend show;
 ylabel('Amplitude [dB]');xlabel('x[mm]')
 
 set(gca,'Fontsize',15)
-saveas(f456,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/resolution.eps'],'eps2c')
+saveas(f456,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/resolution.eps'],'eps2c')
+tools.publish_snap_now_figure(f456);
 
 %% Create plot that was used in the abstract showing the images and the TX delays
 % The images can be zoomed in on the artifact as we did in the abstract,
@@ -356,6 +371,8 @@ title('1f: Tx delay virt. source+PW model');xlabel('x [mm]');ylabel('z [mm]');
 colorbar; set(gca,'fontsize',14);%colormap jet;
 
 set(h,'Position',[271    38   843   621]);
+drawnow;
+tools.publish_snap_now_figure(h);
 
 % A few trics to get the colormap in the submitted abstract:
 % 1. Run the three bottom subplots with colormap jet
@@ -371,7 +388,8 @@ set(gca,'Fontsize',15)
 axis image;
 c = caxis;
 caxis(c); colormap jet
-saveas(f66,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_vs.eps'],'eps2c')
+saveas(f66,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_vs.eps'],'eps2c')
+tools.publish_snap_now_figure(f66);
 
 %%
 % Plot the delay calculated for the unified model
@@ -382,7 +400,8 @@ colorbar; set(gca,'fontsize',14); xlabel('x [mm]');ylabel('z [mm]');
 set(gca,'Fontsize',15)
 axis image;
 caxis(c); colormap jet
-saveas(f67,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_unified.eps'],'eps2c')
+saveas(f67,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_unified.eps'],'eps2c')
+tools.publish_snap_now_figure(f67);
 
 %%
 % Plot the delay calculated for the hybrid model
@@ -393,4 +412,5 @@ colorbar; set(gca,'fontsize',14); xlabel('x [mm]');ylabel('z [mm]');
 set(gca,'Fontsize',15)
 axis image;
 caxis(c); colormap jet
-saveas(f68,[ustb_path,'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_hybrid.eps'],'eps2c')
+saveas(f68,[ustb_path(),'/publications/IUS2018/Rindal_et_al_ASimpleArtifactFreeVirtualSourceModel/Figures/delay_hybrid.eps'],'eps2c')
+tools.publish_snap_now_figure(f68);

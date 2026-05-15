@@ -28,10 +28,7 @@ idx_speckle = idx_speckle_outer;
 
 f1 = figure(1111); %#ok<*FIGLEG>
 clf(f1);
-set(f1, 'Position', [100, 100, 300, 300]);
-if ~usejava('desktop')
-    set(f1, 'Visible', 'off');
-end
+set(f1, 'Position', [100, 100, 300, 300], 'Visible', tools.headless_publish_figure_visible());
 imagesc(sta_image.scan.x_axis*1e3,sta_image.scan.z_axis*1e3,image.all{1});
 colormap gray; caxis([-60 0]); axis image; xlabel('x [mm]');ylabel('y [mm]');
 %colorbar
@@ -48,6 +45,8 @@ text(xc_nonecho-7.5,zc_nonecho,'3','FontSize',18,'FontWeight','bold','Color','g'
 text(xc_alt-1,zc_alt,'4','FontSize',18,'FontWeight','bold','Color','y');
 set(axi,'FontSize',12);
 
+drawnow;
+tools.publish_snap_now_figure(f1);
 
 if nargin == 14
     saveas(f1,f_filename,'eps2c');

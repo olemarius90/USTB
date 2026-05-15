@@ -29,10 +29,7 @@ end
 
 % Figures that must appear in MATLAB publish()+snapnow (-nodisplay) need Visible 'on' even in
 % headless mode; invisible + colorbar reliably drops snapshots for publish (triptych, diff maps).
-fv_publish = 'off';
-if headless
-    fv_publish = 'on';
-end
+fv_publish = tools.headless_publish_figure_visible();
 %% Load data
 % Prefer Zenodo (CI); fall back to ustb.no mirrors — speckle_sim_FI_P4_* are not on Zenodo 19550715.
 local_path = [ustb_path(), '/data/'];
@@ -44,7 +41,7 @@ addpath(local_path);
 % Three panel images in **one figure** (`subplot(1,3,:)`): one embedded snapshot for this cell.
 % MATLAB publish() does not reliably embed snapshots for `beamformed_data.plot(ax, …)`
 % when `ax` belongs to an ad-hoc invisible figure axis handle; passing a explicit figure
-% (as in Save PNGs) works — see correction_publish_beam_snap below.
+% (as in Save PNGs) works — see +tools/publish_beamformed_snap.
 speckle_chamber_mm = [-6, 70, 7, 40];
 dataset_roi = {
     'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', 'Full aperture (no element blockage)'
@@ -157,11 +154,11 @@ mid.transmit_apodization.f_number=Fnumber;
 mid.transmit_apodization.minimum_aperture = 3e-3;
 b_data_RTB = mid.go();
 b_data_RTB.frame_rate = 20;
-correction_publish_beam_snap(b_data_RTB, headless, 'RTB');
+tools.publish_beamformed_snap(b_data_RTB, 'RTB');
 %% Store the Original RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-correction_publish_beam_snap(b_data_tx_apod, headless, ['Tx Weights no shift'], [], 'none');
+tools.publish_beamformed_snap(b_data_tx_apod, ['Tx Weights no shift'], [], 'none');
 colormap default;
 %% Change beam geometry for RTB processing
 switch tag
@@ -182,11 +179,11 @@ mid.channel_data = channel_data_shifted;
 mid.transmit_apodization.f_number=Fnumber;
 b_data_RTB_comp = mid.go();
 b_data_RTB_comp.frame_rate = 20;
-correction_publish_beam_snap(b_data_RTB_comp, headless, 'Proposed RTB');
+tools.publish_beamformed_snap(b_data_RTB_comp, 'Proposed RTB');
 %% Store the Compensated RTB weights for plotting later
 b_data_tx_apod = uff.beamformed_data(b_data_RTB_comp);
 b_data_tx_apod.data = mid.transmit_apodization.data;
-correction_publish_beam_snap(b_data_tx_apod, headless, ['Tx Weights with shift'], [], 'none');
+tools.publish_beamformed_snap(b_data_tx_apod, ['Tx Weights with shift'], [], 'none');
 colormap default;
 %% Demodulate REFoCUS RF-data before DAS
 demod = preprocess.fast_demodulation();
@@ -209,11 +206,11 @@ mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-correction_publish_beam_snap(b_data_delayed_REFoCUS, headless, 'REFoCUS');
+tools.publish_beamformed_snap(b_data_delayed_REFoCUS, 'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
-correction_publish_beam_snap(b_data_REFoCUS, headless);
+tools.publish_beamformed_snap(b_data_REFoCUS);
 
 %% Save PNGs
 f = figure('Visible', 'off');
