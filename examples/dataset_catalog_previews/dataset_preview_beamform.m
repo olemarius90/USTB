@@ -531,9 +531,45 @@ switch fn
         b_data = uff.read_object(uff_file, '/b_data_das');
 
     otherwise
-        error('dataset_preview_beamform:noCase', ...
-            'No preview recipe for %s — add a case in dataset_preview_beamform.m', fn);
+        b_data = generic_beamform(uff_file);
 end
+end
+
+function b_data = generic_beamform(uff_file)
+%GENERIC_BEAMFORM  Auto-detect scan type and beamform with standard parameters.
+channel_data = uff.read_object(uff_file, '/channel_data');
+
+% Detect sector vs linear: if source has non-zero azimuth, use sector scan
+is_sector = false;
+if ~isempty(channel_data.sequence(1).source) && ...
+        ~isempty(channel_data.sequence(1).source.azimuth) && ...
+        abs(channel_data.sequence(1).source.azimuth) > 0.01
+    is_sector = true;
+end
+
+if is_sector
+    az = zeros(channel_data.N_waves, 1);
+    for n = 1:channel_data.N_waves
+        az(n) = channel_data.sequence(n).source.azimuth;
+    end
+    scan = uff.sector_scan('azimuth_axis', az, ...
+        'depth_axis', linspace(0, 110e-3, 512).');
+else
+    x_range = max(channel_data.probe.x) - min(channel_data.probe.x);
+    scan = uff.linear_scan(...
+        'x_axis', linspace(-x_range*0.8, x_range*0.8, 256).', ...
+        'z_axis', linspace(1e-3, 55e-3, 512).');
+end
+
+mid = midprocess.das();
+mid.channel_data = channel_data;
+mid.dimension = dimension.both();
+mid.scan = scan;
+mid.receive_apodization.window = uff.window.hanning;
+mid.receive_apodization.f_number = 1.75;
+mid.transmit_apodization.window = uff.window.hanning;
+mid.transmit_apodization.f_number = 1.75;
+b_data = mid.go();
 end
 
 function ch = channel_data_from(uff_file)
