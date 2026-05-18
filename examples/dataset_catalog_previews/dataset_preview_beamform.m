@@ -508,7 +508,7 @@ switch fn
         pipe.receive_apodization.window = uff.window.none;
         b_data = pipe.go({midprocess.das()});
 
-    case 'P4_FI.uff'
+    case 'P4_FI_121444_45mm_focus.uff'
         % publications/IUS2018/.../FI_UFF_phased_array_MLA_and_RTB_delay_models.m (conventional)
         channel_data = uff.read_object(uff_file, '/channel_data');
         scan = uff.sector_scan('azimuth_axis', ...

@@ -24,7 +24,7 @@ local_path = [ustb_path(),'/data/']; % location of example data
 addpath(local_path);
 
 % Choose dataset
-filename='P4_FI.uff';
+filename='P4_FI_121444_45mm_focus.uff';
 
 % check if the file is available in the local path or downloads otherwise
 tools.download(filename, url, local_path);

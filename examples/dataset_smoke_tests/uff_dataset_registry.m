@@ -52,7 +52,7 @@ T = add(T, 'invitro_20.uff', '', 'beamform', 'publications: TUFFC GCNR');
 T = add(T, 'insilico_side_100_M45.uff', '', 'beamform', 'publications: TUFFC GCNR');
 T = add(T, 'insilico_20.uff', '', 'beamform', 'publications: IUS2019 GCNR NLM');
 T = add(T, 'FieldII_CPWC_point_scatterers_res_v2.uff', '', 'beamform', 'publications: IUS2020 resolution');
-T = add(T, 'P4_FI.uff', '', 'beamform', 'publications: IUS2018 MLA/RTB');
+T = add(T, 'P4_FI_121444_45mm_focus.uff', '', 'beamform', 'publications: IUS2018 MLA/RTB');
 T = add(T, 'beamformed_simulated_data.uff', '', 'beamformed_only', 'publications: IUS2017 dark region (beamformed only)');
 T = add(T, 'beamformed_experimental_data.uff', '', 'beamformed_only', 'publications: IUS2017 dark region (beamformed only)');
 
