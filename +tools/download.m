@@ -55,68 +55,58 @@ if ~exist(file,  'file')
     if ~exist(path, 'dir')
         mkdir(path)
     end
-    
-    % Prepare a HTTP option object were we specify to use a custom progress
-    % monitor, which informs the user about the amount of downloaded data
-    opts = matlab.net.http.HTTPOptions('ProgressMonitorFcn', ...
-        @tools.progressMonitor, 'UseProgressMonitor',true);
-    
-    % We send a first GET request
-    response = send(matlab.net.http.RequestMessage(), url, opts);
-    
-    % First, we check that the response from the server was OK
-    if response.StatusCode == 200
-        
-        % If the content of the first response is of type 'application-
-        % octet-stream' or is not specified, it means that we have already
-        % downloaded the file in the first request. NOTE: the order in
-        % which the two clauses are checked is important
-        if isempty(response.Body.ContentType) || ...
-                strcmp(response.Body.ContentType.Type, 'application')
-            
-            % We just need to save the file
-            fid = fopen(file, 'w');
-            fwrite(fid, response.Body.Data);
-            fclose(fid);
-            
-        % If the content of the first response is of type 'text-html', it
-        % means that the file was large enough to trigger the warning
-        % download message in Google drive. Therefore, we need to send a 
-        % confirm request to begin the download
-        elseif strcmp(response.Body.ContentType.Type, 'text')        
-            
-            % First, we prepare a second GET request, which will start the file
-            % download
-            request = matlab.net.http.RequestMessage();
-            
-            % Then we extract the cookies from the response
-            setCookie = response.getFields('Set-Cookie');
-            cookieInfo = setCookie.convert();
-            
-            % We look for the cookie whose field starts with "download warning"
-            for cookie = [cookieInfo.Cookie]
-                
-                if startsWith(cookie.Name, 'download_warning')
-                    
-                    key = cookie.Value;
-                    request = addFields(request, 'Cookie', ...
-                        matlab.net.http.Cookie(cookie.Name, cookie.Value));
-                end
-            end
-            
-            % We send the second GET request and begin the file download
-            response = send(request, strcat(url, '&confirm=', key), opts);
-            
-            % We save the file
-            fid = fopen(file, 'w');
-            fwrite(fid, response.Body.Data);
-            fclose(fid);
-        else
-            error('Unknown content type!');
-        end
-        
+
+    % Use websave for standard HTTPS downloads (Zenodo, etc.)
+    % Keep matlab.net.http only for Google Drive confirm flows.
+    if contains(url, 'drive.google.com')
+        download_google_drive(file, url);
     else
-        error('The HTTP request failed with error %d', response.StatusCode);
+        webopts = weboptions('Timeout', 900);
+        try
+            websave(file, url, webopts);
+        catch ME
+            try
+                urlwrite(url, file); %#ok<URLWR>
+            catch ME2
+                error('tools:download:failed', ...
+                    'Download failed.\n  websave: %s\n  urlwrite: %s', ...
+                    ME.message, ME2.message);
+            end
+        end
     end
+end
+end
+
+function download_google_drive(file, url)
+opts = matlab.net.http.HTTPOptions('ProgressMonitorFcn', ...
+    @tools.progressMonitor, 'UseProgressMonitor', true);
+response = send(matlab.net.http.RequestMessage(), url, opts);
+if response.StatusCode == 200
+    if isempty(response.Body.ContentType) || ...
+            strcmp(response.Body.ContentType.Type, 'application')
+        fid = fopen(file, 'w');
+        fwrite(fid, response.Body.Data);
+        fclose(fid);
+    elseif strcmp(response.Body.ContentType.Type, 'text')
+        request = matlab.net.http.RequestMessage();
+        setCookie = response.getFields('Set-Cookie');
+        cookieInfo = setCookie.convert();
+        key = '';
+        for cookie = [cookieInfo.Cookie]
+            if startsWith(cookie.Name, 'download_warning')
+                key = cookie.Value;
+                request = addFields(request, 'Cookie', ...
+                    matlab.net.http.Cookie(cookie.Name, cookie.Value));
+            end
+        end
+        response = send(request, strcat(url, '&confirm=', key), opts);
+        fid = fopen(file, 'w');
+        fwrite(fid, response.Body.Data);
+        fclose(fid);
+    else
+        error('Unknown content type!');
+    end
+else
+    error('The HTTP request failed with error %d', response.StatusCode);
 end
 end

@@ -107,7 +107,14 @@ for i = 1:n
         end
     end
     try
-        b_data = dataset_preview_beamform(uff_file);
+        if strcmp(T(i).mode, 'beamformed_only')
+            b_data = uff.read_object(uff_file, '/b_data');
+            if isempty(b_data) || isempty(b_data.data)
+                b_data = uff.read_object(uff_file, '/b_data_das');
+            end
+        else
+            b_data = dataset_preview_beamform(uff_file);
+        end
     catch ME
         results(i).message = ME.message;
         fprintf('[FAIL] %s — %s\n', fn, ME.message);

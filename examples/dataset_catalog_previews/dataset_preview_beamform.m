@@ -530,6 +530,12 @@ switch fn
     case 'beamformed_experimental_data.uff'
         b_data = uff.read_object(uff_file, '/b_data_das');
 
+    case 'beamformed_simulated_data.uff'
+        b_data = uff.read_object(uff_file, '/b_data_das');
+
+    case 'reference_RTB_data.uff'
+        b_data = uff.read_object(uff_file, '/b_data');
+
     otherwise
         b_data = generic_beamform(uff_file);
 end

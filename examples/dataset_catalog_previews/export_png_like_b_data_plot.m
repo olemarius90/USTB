@@ -26,19 +26,19 @@ try
 
     ax = gca(fig);
     axis(ax, 'tight');
+    set(fig, 'Position', [100, 100, 600, 500]);
+    set(ax, 'Units', 'normalized', 'Position', [0.1, 0.1, 0.8, 0.8]);
     drawnow;
 
-    % Capture axes only (sector pcolor + equal aspect); avoids flat-matrix stretch.
+    % Capture figure (not just axes — avoids getframe zero-pixel errors in software OpenGL).
     if exist('exportgraphics', 'file') == 2 %#ok<EXIST>
         try
             exportgraphics(ax, filepath, 'Resolution', 120, 'BackgroundColor', 'white');
         catch
-            F = getframe(ax);
-            imwrite(F.cdata, filepath);
+            print(fig, filepath, '-dpng', '-r120');
         end
     else
-        F = getframe(ax);
-        imwrite(F.cdata, filepath);
+        print(fig, filepath, '-dpng', '-r120');
     end
 
     % Cap longest edge for the catalog (keep aspect from plot).

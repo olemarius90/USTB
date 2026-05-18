@@ -63,7 +63,7 @@ T = add(T, 'SWE_L7_type_III.uff', '', 'beamform', 'Shear wave elastography type 
 T = add(T, 'SWE_L7_type_IV.uff', '', 'beamform', 'Shear wave elastography type IV');
 T = add(T, 'Verasonics_P2-4_apical_four_chamber_subject_1.uff', '', 'beamform', 'In-vivo cardiac apical four-chamber');
 T = add(T, 'experimental_dynamic_range_phantom.uff', '', 'beamform', 'Experimental dynamic range phantom');
-T = add(T, 'reference_RTB_data.uff', '', 'beamform', 'RTB reference data');
+T = add(T, 'reference_RTB_data.uff', '', 'beamformed_only', 'RTB reference data (beamformed only)');
 T = add(T, 'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', '', 'beamform', 'publications: Vralstad full aperture');
 T = add(T, 'speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff', '', 'beamform', 'publications: Vralstad 1/3 blocked');
 
