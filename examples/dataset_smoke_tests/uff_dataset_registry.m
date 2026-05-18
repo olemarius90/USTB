@@ -33,7 +33,7 @@ T = add(T, 'ARFI_dataset.uff', '', 'beamform', 'examples: ARFI Verasonics');
 T = add(T, 'PICMUS_experiment_resolution_distortion.uff', '', 'beamform', 'examples: PICMUS');
 T = add(T, 'PICMUS_simulation_resolution_distortion.uff', '', 'beamform', 'examples: PICMUS');
 T = add(T, 'PICMUS_experiment_contrast_speckle.uff', '', 'beamform', 'examples: PICMUS');
-T = add(T, 'PICMUS_simulation_contrast_speckle.uff', '', 'beamform', 'examples: PICMUS');
+T = add(T, 'PICMUS_simulation_contrast_speckle.uff', '', 'beamform', 'examples: PICMUS, CPWC_UFF_read');
 T = add(T, 'PICMUS_carotid_cross.uff', '', 'beamform', 'examples: PICMUS in-vivo');
 T = add(T, 'Verasonics_P2-4_parasternal_long_subject_1.uff', '', 'beamform', 'examples: SLSC / multi-frame');
 T = add(T, 'FieldII_P4_point_scatterers.uff', '', 'beamform', 'examples: UiO phased array exercise');
@@ -42,7 +42,6 @@ T = add(T, 'FieldII_STAI_axial_gradient_v2.uff', '', 'beamform', 'publications: 
 T = add(T, 'FieldII_STAI_gradient_full_field_100.uff', '', 'beamform', 'publications: DynamicRange full gradient');
 T = add(T, 'P4_FI_121444_45mm_focus.uff', '', 'beamform', 'examples: REFoCUS');
 T = add(T, 'FieldII_speckle_simulation.uff', '', 'beamform', 'examples: field_II STAI speckle parfor');
-T = add(T, 'test02.uff', '', 'beamform', 'examples: CPWC_UFF_read');
 
 % --- publications/ (Zenodo 20261898) ---
 T = add(T, 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', '', 'beamform', 'publications: Vralstad blockage');
