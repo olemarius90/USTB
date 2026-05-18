@@ -89,7 +89,7 @@ classdef unit_test
         end
         
         function download_UT_data(~)
-            download_ps_test_data();
+            tools.download_ps_test_data();
         end
     end
 end

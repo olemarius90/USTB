@@ -11,7 +11,7 @@ function ok = TE_ps_cpw_rf_mex(h)
     beamformed_data_filename='beamformed_ps_cpw_rf.mat';
     
     % check if the file is available in the local path & downloads otherwise
-    download_ps_test_data();
+    tools.download_ps_test_data();
 
     
     % load data
