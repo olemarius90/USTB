@@ -8,7 +8,7 @@ clear all;
 close all;
 
 %% Download and read channel_data
-url='http://ustb.no/datasets/'; 
+url = tools.zenodo_dataset_files_base();
 filename='L7_CPWC_TheGB.uff'; selected_tx(1) = 20; tag{1} = 'FI'; tag_title{1} = 'Focused';
 tools.download(filename, url, data_path);
 channel_data=uff.read_object([data_path filesep filename],'/channel_data');

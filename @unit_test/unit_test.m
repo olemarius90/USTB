@@ -89,7 +89,7 @@ classdef unit_test
         end
         
         function download_UT_data(~)% data location
-            url='https://www.ustb.no/datasets';   % if not found data will be downloaded from here           
+            url = tools.zenodo_dataset_files_base();  % TODO: ps.zip must be uploaded to Zenodo 20261898           
             filename='ps.zip';
             data_path=fullfile(ustb_path(), 'data');
             

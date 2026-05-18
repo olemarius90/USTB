@@ -104,7 +104,7 @@ def build_html(rows: list[dict]) -> str:
         note = r["note"].replace("&", "&amp;").replace("<", "&lt;")
         slug_v = slug(fn)
         rel_img = f"assets/images/datasets/{slug_v}.png"
-        url = f"https://www.ustb.no/datasets/{fn}"
+        url = f"https://zenodo.org/records/20261898/files/{fn}"
         cards.append(
             f"""            <article class="dataset-card">
                 <a href="{url}" class="dataset-thumb" target="_blank" rel="noopener">

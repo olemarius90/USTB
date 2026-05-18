@@ -2,7 +2,7 @@ classdef integration_fi_phased_cardiac_test < matlab.unittest.TestCase
 
     methods (Test)
         function test_fi_phased_cardiac_beamforming(testCase)
-            url = 'http://ustb.no/datasets/';
+            url = tools.zenodo_dataset_files_base();
             filename = 'Verasonics_P2-4_parasternal_long_small.uff';
             local_path = [ustb_path(), '/data/'];
             tools.download(filename, url, local_path);
@@ -45,7 +45,7 @@ classdef integration_fi_phased_cardiac_test < matlab.unittest.TestCase
         end
 
         function test_cardiac_data_is_phased_array(testCase)
-            url = 'http://ustb.no/datasets/';
+            url = tools.zenodo_dataset_files_base();
             filename = 'Verasonics_P2-4_parasternal_long_small.uff';
             local_path = [ustb_path(), '/data/'];
             tools.download(filename, url, local_path);

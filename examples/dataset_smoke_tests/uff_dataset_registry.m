@@ -2,7 +2,7 @@ function T = uff_dataset_registry()
 %UFF_DATASET_REGISTRY  Table of UFF datasets referenced under examples/ and publications/.
 %
 %   Each row describes one distinct dataset file available from the USTB dataset
-%   repository (ustb.no/datasets). Used by RUN_DATASET_SMOKE_TESTS.
+%   repository (Zenodo record 20261898). Used by RUN_DATASET_SMOKE_TESTS.
 %
 %   Columns (struct fields):
 %     filename   - .uff file name
@@ -19,7 +19,7 @@ function T = uff_dataset_registry()
 
 T = struct('filename', {}, 'channel_h5', {}, 'mode', {}, 'note', {});
 
-% --- examples/ (ustb.no/datasets) ---
+% --- examples/ (Zenodo 20261898) ---
 T = add(T, 'Verasonics_P2-4_parasternal_long_small.uff', '', 'beamform', 'examples: FI phased array, minimal_example');
 T = add(T, 'L7_FI_IUS2018.uff', '', 'beamform', 'examples: FI RTB / Verasonics');
 T = add(T, 'L7_CPWC_193328.uff', '', 'beamform', 'examples: CPWC Verasonics');
@@ -44,7 +44,7 @@ T = add(T, 'P4_FI_121444_45mm_focus.uff', '', 'beamform', 'examples: REFoCUS');
 T = add(T, 'FieldII_speckle_simulation.uff', '', 'beamform', 'examples: field_II STAI speckle parfor');
 T = add(T, 'test02.uff', '', 'beamform', 'examples: CPWC_UFF_read');
 
-% --- publications/ (ustb.no/datasets) ---
+% --- publications/ (Zenodo 20261898) ---
 T = add(T, 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', '', 'beamform', 'publications: Vralstad blockage');
 T = add(T, 'L7_FI_Verasonics_CIRS_points.uff', '', 'beamform', 'publications: TUFFC fDMAS');
 T = add(T, 'L7_FI_carotid_cross_sub_2.uff', '', 'beamform', 'publications: TUFFC GCNR');
