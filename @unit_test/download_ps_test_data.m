@@ -1,19 +1,22 @@
 function download_ps_test_data()
 %DOWNLOAD_PS_TEST_DATA  Ensure ps/ test .mat files are available locally.
-%   Downloads ps.zip from Zenodo and unzips into data/ps/ if not already present.
+%   Downloads individual .mat files from Zenodo record 20269473 into data/ps/.
 
 ps_dir = fullfile(ustb_path(), 'data', 'ps');
-if isfolder(ps_dir) && ~isempty(dir(fullfile(ps_dir, '*.mat')))
-    return
+if ~isfolder(ps_dir)
+    mkdir(ps_dir);
 end
 
 url = 'https://zenodo.org/records/20269473/files';
-data_dir = fullfile(ustb_path(), 'data');
-zipfile = fullfile(data_dir, 'ps.zip');
 
-tools.download('ps.zip', url, data_dir);
-unzip(zipfile, data_dir);
-if isfile(zipfile)
-    delete(zipfile);
+files = {'ps_vs_iq.mat', 'ps_vs_rf.mat', 'ps_sta_iq.mat', 'ps_sta_rf.mat', ...
+         'ps_cpw_iq.mat', 'ps_cpw_rf.mat', ...
+         'beamformed_ps_vs_iq.mat', 'beamformed_ps_vs_rf.mat', ...
+         'beamformed_ps_sta_iq.mat', 'beamformed_ps_sta_rf.mat', ...
+         'beamformed_ps_cpw_iq.mat', 'beamformed_ps_cpw_rf.mat'};
+
+for k = 1:numel(files)
+    tools.download(files{k}, url, ps_dir);
 end
+
 end

@@ -1,6 +1,6 @@
 function ok = TE_ps_cpw_iq_mex(h)
 %PS_CPW_IQ Point Spread function Coherent Plane-Wave Compounding IQ test
-%   Downloads test data from Zenodo (ps.zip record 20269473)
+%   Downloads test data from Zenodo record 20269473
 %   beamforms it and compares it with previously beamformed data (USTB v1.9)
 
     import uff.*;
