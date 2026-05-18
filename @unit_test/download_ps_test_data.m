@@ -7,7 +7,7 @@ if ~isfolder(ps_dir)
     mkdir(ps_dir);
 end
 
-url = 'https://zenodo.org/records/20269473/files';
+url = 'https://zenodo.org/records/20270074/files';
 
 files = {'ps_vs_iq.mat', 'ps_vs_rf.mat', 'ps_sta_iq.mat', 'ps_sta_rf.mat', ...
          'ps_cpw_iq.mat', 'ps_cpw_rf.mat', ...
