@@ -4,7 +4,7 @@ import os
 import urllib.request
 import numpy as np
 
-DATA_URL = "https://www.ustb.no/datasets/"
+DATA_URL = "https://zenodo.org/records/20261898/files/"
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
 

@@ -3,7 +3,7 @@
 % Saves beamformed envelopes as HDF5 for Python comparison.
 
 addpath(ustb_path());
-url = 'http://ustb.no/datasets/';
+url = tools.zenodo_dataset_files_base();
 local_path = [ustb_path(), '/data/'];
 outdir = fullfile(fileparts(mfilename('fullpath')));
 

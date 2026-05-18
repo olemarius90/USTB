@@ -13,7 +13,7 @@ function results = export_dataset_previews_to_website(varargin)
 %   naming as website/scripts/build_datasets_page.py (see website_slug_for_dataset).
 %
 %   Name-value:
-%     'url'              — primary dataset base (default 'https://www.ustb.no/datasets',
+%     'url'              — primary dataset base (default Zenodo 20261898,
 %                          no trailing slash)
 %     'stop_on_error'    — default false
 %     'website_root'     — override path to repo root (default: ustb_path())
@@ -29,7 +29,7 @@ function results = export_dataset_previews_to_website(varargin)
 %     python3 website/scripts/build_datasets_page.py
 
 p = inputParser;
-addParameter(p, 'url', 'https://www.ustb.no/datasets', @(s) ischar(s) || isstring(s));
+addParameter(p, 'url', tools.zenodo_dataset_files_base(), @(s) ischar(s) || isstring(s));
 addParameter(p, 'stop_on_error', false, @islogical);
 addParameter(p, 'website_root', '', @(s) ischar(s) || isstring(s));
 addParameter(p, 'indices', [], @(x) isempty(x) || (isnumeric(x) && isvector(x) && all(x > 0)));
@@ -168,11 +168,7 @@ end
 function C = dataset_url_bases(primary)
 bases = {
     primary
-    'https://www.ustb.no/datasets'
-    'http://www.ustb.no/datasets'
-    'https://ustb.no/datasets'
-    'http://ustb.no/datasets'
-    'https://www.ultrasoundtoolbox.com/datasets'
+    tools.zenodo_dataset_files_base()
     };
 C = {};
 for k = 1:numel(bases)

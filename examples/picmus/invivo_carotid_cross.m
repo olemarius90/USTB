@@ -19,6 +19,7 @@
 
 % data location
 url = tools.zenodo_dataset_files_base();
+% if not found data will be downloaded from here
 filename='PICMUS_carotid_cross.uff';
 
 % checks if the data is in your data path, and downloads it otherwise.

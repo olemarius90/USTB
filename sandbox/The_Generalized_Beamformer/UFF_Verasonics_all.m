@@ -4,7 +4,8 @@ close all;
 
 %% Checking the file is in the path
 % data location
-url='http://ustb.no/datasets/';      % if not found data will be downloaded from here
+url = tools.zenodo_dataset_files_base();
+% if not found data will be downloaded from here
 
 % all_filenames{1}='L7_FI_TheGB.uff'; selected_tx(1) = 20; tag{1} = 'FI'; tag_title{1} = 'Focused';
 % all_filenames{2}='L7_DW_TheGB.uff'; selected_tx(2) = 1; tag{2} = 'DW'; tag_title{2} = 'Diverging';
