@@ -88,16 +88,8 @@ classdef unit_test
             end
         end
         
-        function download_UT_data(~)% data location
-            url = tools.zenodo_dataset_files_base();  % TODO: ps.zip must be uploaded to Zenodo 20261898           
-            filename='ps.zip';
-            data_path=fullfile(ustb_path(), 'data');
-            
-            % Downlad data if needed
-            tools.download(filename, url, data_path);
-
-            unzip(fullfile(data_path,filename), data_path)
-            delete(fullfile(data_path,filename))
+        function download_UT_data(~)
+            download_ps_test_data();
         end
     end
 end
