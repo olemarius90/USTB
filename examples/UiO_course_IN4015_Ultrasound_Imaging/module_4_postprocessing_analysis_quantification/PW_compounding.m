@@ -14,6 +14,7 @@ close all;
 
 % data location
 url = tools.zenodo_dataset_files_base();
+% if not found data will be downloaded from here
 filename='PICMUS_experiment_resolution_distortion.uff';
 filename='PICMUS_simulation_contrast_speckle.uff';
 

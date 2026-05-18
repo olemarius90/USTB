@@ -339,20 +339,6 @@ switch fn
         pipe.scan = scan;
         b_data = pipe.go({midprocess.das() postprocess.coherent_compounding()});
 
-    case 'test02.uff'
-        % examples/uff/CPWC_UFF_read.m — beamforming uses /scan from file (same as stored b_data)
-        channel_data = uff.read_object(uff_file, '/channel_data');
-        scan = uff.read_object(uff_file, '/scan');
-        mid = midprocess.das();
-        mid.dimension = dimension.both;
-        mid.channel_data = channel_data;
-        mid.scan = scan;
-        mid.transmit_apodization.window = uff.window.tukey50;
-        mid.transmit_apodization.f_number = 1.0;
-        mid.receive_apodization.window = uff.window.tukey50;
-        mid.receive_apodization.f_number = 1.0;
-        b_data = mid.go();
-
     case 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'
         % publications/TUSON/Vralstad_et_al_2026_.../Correction_of_simulated_blockage.m (RTB block)
         channel_data = uff.read_object(uff_file, '/channel_data');
@@ -508,7 +494,7 @@ switch fn
         pipe.receive_apodization.window = uff.window.none;
         b_data = pipe.go({midprocess.das()});
 
-    case 'P4_FI.uff'
+    case 'P4_FI_121444_45mm_focus.uff'
         % publications/IUS2018/.../FI_UFF_phased_array_MLA_and_RTB_delay_models.m (conventional)
         channel_data = uff.read_object(uff_file, '/channel_data');
         scan = uff.sector_scan('azimuth_axis', ...

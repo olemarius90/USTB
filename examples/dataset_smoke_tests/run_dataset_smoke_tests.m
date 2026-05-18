@@ -11,7 +11,7 @@ function results = run_dataset_smoke_tests(varargin)
 %   Requires network access on first run for each file.
 
 p = inputParser;
-addParameter(p, 'url', 'https://www.ustb.no/datasets', @(s) ischar(s) || isstring(s));
+addParameter(p, 'url', tools.zenodo_dataset_files_base(), @(s) ischar(s) || isstring(s));
 addParameter(p, 'plot', false, @islogical);
 addParameter(p, 'stop_on_error', false, @islogical);
 parse(p, varargin{:});

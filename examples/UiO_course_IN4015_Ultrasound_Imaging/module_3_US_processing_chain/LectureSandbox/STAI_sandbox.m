@@ -2,7 +2,8 @@ clear all; close all;
 
 %% Read Channel data
 % data location
-url='http://ustb.no/datasets/';      % if not found downloaded from here
+url = tools.zenodo_dataset_files_base();
+% if not found downloaded from here
 
 filename = ['experimental_STAI_dynamic_range.uff'];
 

@@ -42,7 +42,7 @@ def download_dataset(filename, url, local_path):
 
 def main():
     # Download and read dataset
-    url = "https://www.ustb.no/datasets/"
+    url = "https://zenodo.org/records/20261898/files/"
     local_path = os.path.join(os.path.dirname(__file__), "..", "data")
     filename = "Verasonics_P2-4_parasternal_long_small.uff"
     filepath = download_dataset(filename, url, local_path)

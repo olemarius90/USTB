@@ -10,7 +10,7 @@ function download(file, url, local_path)
 %   the file id
 %
 %   Example:
-%       url = 'http://ustb.no/datasets/ARFI_dataset.uff';
+%       url = [tools.zenodo_dataset_files_base() '/ARFI_dataset.uff'];
 %       file = fullfile(ustb_path(), 'data', 'ARFI_dataset.uff');
 %       tools.download(file, url)
 
@@ -21,14 +21,12 @@ function download(file, url, local_path)
 if nargin > 2 
     path = local_path;  % The third argument used to be the path
     % Strip trailing slash from base URL so we do not produce .../datasets//file.uff
-    % or Zenodo .../files//name.uff (some servers return 404 for the double slash,
-    % e.g. GitHub Actions).
+    % (some servers return 404 for the double slash, e.g. GitHub Actions).
     base = url;
     while ~isempty(base) && base(end) == '/'
         base = base(1:end-1);
     end
     url = [base, '/', file]; % The URL now needs to include the file name
-    url = merge_url_duplicate_slashes(url);
     file = fullfile(path, [name, ext]); % The file need to have the full path 
                                         % to be saved correctly later
 end
@@ -58,105 +56,67 @@ if ~exist(file,  'file')
         mkdir(path)
     end
     
-    % Prepare a HTTP option object were we specify to use a custom progress
-    % monitor, which informs the user about the amount of downloaded data
-    opts = matlab.net.http.HTTPOptions('ProgressMonitorFcn', ...
-        @tools.progressMonitor, 'UseProgressMonitor',true);
-    
-    % We send a first GET request. Zenodo (and a few CDNs) may send duplicate
-    % Content-Type headers; MATLAB's parser then errors ("more than one header
-    % field with the name Content-Type"). Fall back to websave in that case.
-    response = [];
-    try
-        response = send(matlab.net.http.RequestMessage(), url, opts);
-    catch ME
-        if contains(ME.message, 'Content-Type') || contains(ME.message, 'header field')
-            websave_with_redirects(file, url);
-            return
-        else
-            rethrow(ME);
-        end
+    % Create folder if it does not exist (again, in case path changed)
+    if ~exist(path, 'dir')
+        mkdir(path)
     end
-    
-    % First, we check that the response from the server was OK
-    if response.StatusCode == 200
-        
-        % If the content of the first response is of type 'application-
-        % octet-stream' or is not specified, it means that we have already
-        % downloaded the file in the first request. NOTE: the order in
-        % which the two clauses are checked is important
-        if isempty(response.Body.ContentType) || ...
-                strcmp(response.Body.ContentType.Type, 'application')
-            
-            % We just need to save the file (binary mode on Windows)
-            fid = fopen(file, 'wb');
-            fwrite(fid, response.Body.Data);
-            fclose(fid);
-            
-        % If the content of the first response is of type 'text-html', it
-        % means that the file was large enough to trigger the warning
-        % download message in Google drive. Therefore, we need to send a 
-        % confirm request to begin the download
-        elseif strcmp(response.Body.ContentType.Type, 'text')        
-            
-            % First, we prepare a second GET request, which will start the file
-            % download
-            request = matlab.net.http.RequestMessage();
-            
-            % Then we extract the cookies from the response
-            setCookie = response.getFields('Set-Cookie');
-            cookieInfo = setCookie.convert();
-            
-            % We look for the cookie whose field starts with "download warning"
-            for cookie = [cookieInfo.Cookie]
-                
-                if startsWith(cookie.Name, 'download_warning')
-                    
-                    key = cookie.Value;
-                    request = addFields(request, 'Cookie', ...
-                        matlab.net.http.Cookie(cookie.Name, cookie.Value));
-                end
-            end
-            
-            % We send the second GET request and begin the file download
-            response = send(request, strcat(url, '&confirm=', key), opts);
-            
-            % We save the file (binary mode on Windows)
-            fid = fopen(file, 'wb');
-            fwrite(fid, response.Body.Data);
-            fclose(fid);
-        else
-            error('Unknown content type!');
-        end
-        
+
+    % Use websave for standard HTTPS downloads (Zenodo, ustb.no, etc.)
+    % The legacy matlab.net.http path is kept only for Google Drive confirm flows.
+    if contains(url, 'drive.google.com')
+        download_google_drive(file, url);
     else
-        error('The HTTP request failed with error %d', response.StatusCode);
+        webopts = weboptions('Timeout', 300);
+        try
+            websave(file, url, webopts);
+        catch ME
+            % websave may fail on servers returning duplicate Content-Type
+            % headers; fall back to urlwrite (deprecated but resilient).
+            try
+                urlwrite(url, file); %#ok<URLWR>
+            catch ME2
+                error('tools:download:failed', ...
+                    'Download failed.\n  websave: %s\n  urlwrite: %s', ...
+                    ME.message, ME2.message);
+            end
+        end
     end
 end
 end
 
-function u = merge_url_duplicate_slashes(u)
-%MERGE_URL_DUPLICATE_SLASHES  Collapse // in path; keep :// scheme intact.
-%   E.g. https://host/a//b -> https://host/a/b
-if isempty(u)
-    return
-end
-k = strfind(u, '://');
-if isempty(k)
-    return
-end
-prefix = u(1:k(1)+2);
-suffix = u(k(1)+3:end);
-suffix = strrep(suffix, '//', '/');
-u = [prefix suffix];
-end
+function download_google_drive(file, url)
+%DOWNLOAD_GOOGLE_DRIVE  Handle Google Drive confirm-download flow.
+opts = matlab.net.http.HTTPOptions('ProgressMonitorFcn', ...
+    @tools.progressMonitor, 'UseProgressMonitor', true);
 
-function websave_with_redirects(outfile, url)
-%WEBSAVE_WITH_REDIRECTS  Download URL to outfile (follows redirects).
-%   Used when matlab.net.http fails on malformed duplicate headers.
-if exist('websave', 'file') ~= 2 %#ok<EXIST>
-    error('tools.download:websave', 'websave not available; update MATLAB or fix HTTP response headers on the server.');
+response = send(matlab.net.http.RequestMessage(), url, opts);
+
+if response.StatusCode == 200
+    if isempty(response.Body.ContentType) || ...
+            strcmp(response.Body.ContentType.Type, 'application')
+        fid = fopen(file, 'w');
+        fwrite(fid, response.Body.Data);
+        fclose(fid);
+    elseif strcmp(response.Body.ContentType.Type, 'text')
+        request = matlab.net.http.RequestMessage();
+        setCookie = response.getFields('Set-Cookie');
+        cookieInfo = setCookie.convert();
+        key = '';
+        for cookie = [cookieInfo.Cookie]
+            if startsWith(cookie.Name, 'download_warning')
+                key = cookie.Value;
+                request = addFields(request, 'Cookie', ...
+                    matlab.net.http.Cookie(cookie.Name, cookie.Value));
+            end
+        end
+        response = send(request, strcat(url, '&confirm=', key), opts);
+        fid = fopen(file, 'w');
+        fwrite(fid, response.Body.Data);
+        fclose(fid);
+    else
+        error('Unknown content type!');
+    end
+else
+    error('The HTTP request failed with error %d', response.StatusCode);
 end
-wo = weboptions('Timeout', Inf);
-websave(outfile, char(url), wo);
 end

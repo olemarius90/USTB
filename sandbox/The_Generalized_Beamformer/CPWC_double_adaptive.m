@@ -11,6 +11,7 @@ SHORT_LAG_SPATIAL_COHERENCE = false;
 
 % data location
 url = tools.zenodo_dataset_files_base();
+% if not found data will be downloaded from here
 
 filename='PICMUS_numerical_calib_v2.uff'; data_label = 'CPWC';
 %filename='FieldII_STAI_dynamic_range.uff';
