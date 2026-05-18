@@ -23,6 +23,8 @@ The USTB is made possible through the contribution of several labs around the wo
 
 * Rodriguez-Molares, A., Rindal, O. M. H., Bernard, O., Nair, A., Bell, M. A. L., Liebgott, H., Austeng, A., Løvstakken, L. (2017). *The UltraSound ToolBox.* IEEE International Ultrasonics Symposium, IUS, 1–4. https://doi.org/10.1109/ULTSYM.2017.8092389
 
+Machine-readable citation metadata: [`CITATION.cff`](CITATION.cff) (GitHub citation / CFF) and [`citation.bib`](citation.bib) (BibTeX) at the repository root. The code is released under the [MIT License](LICENSE); citation expectations for research are separate from that license (see the website citation page).
+
 ### Current version ###
 
 The USTB is still under development, so there might be larger structural changes. The current version in main is;
