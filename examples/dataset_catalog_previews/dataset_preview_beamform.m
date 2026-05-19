@@ -339,8 +339,22 @@ switch fn
         pipe.scan = scan;
         b_data = pipe.go({midprocess.das() postprocess.coherent_compounding()});
 
+    case 'test02.uff'
+        % examples/uff/CPWC_UFF_read.m — beamforming uses /scan from file (same as stored b_data)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        scan = uff.read_object(uff_file, '/scan');
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.tukey50;
+        mid.transmit_apodization.f_number = 1.0;
+        mid.receive_apodization.window = uff.window.tukey50;
+        mid.receive_apodization.f_number = 1.0;
+        b_data = mid.go();
+
     case 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'
-        % publications/TUSON/Vralstad_et_al_2026_.../Correction_of_simulated_blockage.m (RTB block)
+        % publications/.../Correction_of_simulated_blockage.m (RTB block)
         channel_data = uff.read_object(uff_file, '/channel_data');
         channel_data.data = channel_data.data ./ max(channel_data.data(:));
         depth_axis = linspace(0e-3, 110e-3, 512).';
@@ -494,7 +508,7 @@ switch fn
         pipe.receive_apodization.window = uff.window.none;
         b_data = pipe.go({midprocess.das()});
 
-    case 'P4_FI_121444_45mm_focus.uff'
+    case 'P4_FI.uff'
         % publications/IUS2018/.../FI_UFF_phased_array_MLA_and_RTB_delay_models.m (conventional)
         channel_data = uff.read_object(uff_file, '/channel_data');
         scan = uff.sector_scan('azimuth_axis', ...
@@ -516,10 +530,52 @@ switch fn
     case 'beamformed_experimental_data.uff'
         b_data = uff.read_object(uff_file, '/b_data_das');
 
+    case 'beamformed_simulated_data.uff'
+        b_data = uff.read_object(uff_file, '/b_data_das');
+
+    case 'reference_RTB_data.uff'
+        b_data = uff.read_object(uff_file, '/b_data');
+
     otherwise
-        error('dataset_preview_beamform:noCase', ...
-            'No preview recipe for %s — add a case in dataset_preview_beamform.m', fn);
+        b_data = generic_beamform(uff_file);
 end
+end
+
+function b_data = generic_beamform(uff_file)
+%GENERIC_BEAMFORM  Auto-detect scan type and beamform with standard parameters.
+channel_data = uff.read_object(uff_file, '/channel_data');
+
+% Detect sector vs linear: if source has non-zero azimuth, use sector scan
+is_sector = false;
+if ~isempty(channel_data.sequence(1).source) && ...
+        ~isempty(channel_data.sequence(1).source.azimuth) && ...
+        abs(channel_data.sequence(1).source.azimuth) > 0.01
+    is_sector = true;
+end
+
+if is_sector
+    az = zeros(channel_data.N_waves, 1);
+    for n = 1:channel_data.N_waves
+        az(n) = channel_data.sequence(n).source.azimuth;
+    end
+    scan = uff.sector_scan('azimuth_axis', az, ...
+        'depth_axis', linspace(0, 110e-3, 512).');
+else
+    x_range = max(channel_data.probe.x) - min(channel_data.probe.x);
+    scan = uff.linear_scan(...
+        'x_axis', linspace(-x_range*0.8, x_range*0.8, 256).', ...
+        'z_axis', linspace(1e-3, 55e-3, 512).');
+end
+
+mid = midprocess.das();
+mid.channel_data = channel_data;
+mid.dimension = dimension.both();
+mid.scan = scan;
+mid.receive_apodization.window = uff.window.hanning;
+mid.receive_apodization.f_number = 1.75;
+mid.transmit_apodization.window = uff.window.hanning;
+mid.transmit_apodization.f_number = 1.75;
+b_data = mid.go();
 end
 
 function ch = channel_data_from(uff_file)

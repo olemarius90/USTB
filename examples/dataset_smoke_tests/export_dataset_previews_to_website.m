@@ -13,7 +13,7 @@ function results = export_dataset_previews_to_website(varargin)
 %   naming as website/scripts/build_datasets_page.py (see website_slug_for_dataset).
 %
 %   Name-value:
-%     'url'              — primary dataset base (default Zenodo 20261898,
+%     'url'              — primary dataset base (default 'https://www.ustb.no/datasets',
 %                          no trailing slash)
 %     'stop_on_error'    — default false
 %     'website_root'     — override path to repo root (default: ustb_path())
@@ -29,7 +29,7 @@ function results = export_dataset_previews_to_website(varargin)
 %     python3 website/scripts/build_datasets_page.py
 
 p = inputParser;
-addParameter(p, 'url', tools.zenodo_dataset_files_base(), @(s) ischar(s) || isstring(s));
+addParameter(p, 'url', 'https://www.ustb.no/datasets', @(s) ischar(s) || isstring(s));
 addParameter(p, 'stop_on_error', false, @islogical);
 addParameter(p, 'website_root', '', @(s) ischar(s) || isstring(s));
 addParameter(p, 'indices', [], @(x) isempty(x) || (isnumeric(x) && isvector(x) && all(x > 0)));
@@ -107,7 +107,14 @@ for i = 1:n
         end
     end
     try
-        b_data = dataset_preview_beamform(uff_file);
+        if strcmp(T(i).mode, 'beamformed_only')
+            b_data = uff.read_object(uff_file, '/b_data');
+            if isempty(b_data) || isempty(b_data.data)
+                b_data = uff.read_object(uff_file, '/b_data_das');
+            end
+        else
+            b_data = dataset_preview_beamform(uff_file);
+        end
     catch ME
         results(i).message = ME.message;
         fprintf('[FAIL] %s — %s\n', fn, ME.message);
@@ -168,7 +175,11 @@ end
 function C = dataset_url_bases(primary)
 bases = {
     primary
-    tools.zenodo_dataset_files_base()
+    'https://www.ustb.no/datasets'
+    'http://www.ustb.no/datasets'
+    'https://ustb.no/datasets'
+    'http://ustb.no/datasets'
+    'https://www.ultrasoundtoolbox.com/datasets'
     };
 C = {};
 for k = 1:numel(bases)
