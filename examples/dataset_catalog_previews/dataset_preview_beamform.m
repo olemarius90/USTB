@@ -77,30 +77,30 @@ switch fn
         mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
-    case 'L7_FI_TheGB.uff'
-        % sandbox/The_Generalized_Beamformer/UFF_Verasonics_all.m (focused RTB)
+    case {'L7_FI_TheGB.uff', 'L7_FI_Verasonics.uff', 'L7_FI_Verasonics_CIRS.uff', ...
+          'L7_FI_Verasonics_CIRS_points.uff', 'L7_FI_carotid_cross_1.uff', ...
+          'L7_FI_carotid_cross_2.uff', 'L7_FI_carotid_cross_sub_2.uff'}
+        % Conventional scanline FI: 1 transmit per line, no MLA/RTB artifacts
         channel_data = uff.read_object(uff_file, '/channel_data');
-        channel_data.N_frames = 1;
-        channel_data.sound_speed = 1460;
-        for seq = 1:channel_data.N_waves
-            channel_data.sequence(seq).sound_speed = channel_data.sound_speed;
+        if contains(fn, 'TheGB')
+            channel_data.N_frames = 1;
+            channel_data.sound_speed = 1460;
+            for seq = 1:channel_data.N_waves
+                channel_data.sequence(seq).sound_speed = channel_data.sound_speed;
+            end
         end
-        scan = uff.linear_scan();
-        scan.x_axis = linspace(channel_data.probe.x(1), channel_data.probe.x(end), 512).';
-        scan.z_axis = linspace(3e-3, 50e-3, 512).';
-        MLA = round(512 / channel_data.N_waves);
+        x_axis = zeros(channel_data.N_waves, 1);
+        for n = 1:channel_data.N_waves
+            x_axis(n) = channel_data.sequence(n).source.x;
+        end
+        z_axis = linspace(1e-3, 55e-3, 512).';
+        scan = uff.linear_scan('x_axis', x_axis, 'z_axis', z_axis);
         mid = midprocess.das();
-        mid.dimension = dimension.both;
+        mid.dimension = dimension.both();
         mid.channel_data = channel_data;
         mid.scan = scan;
-        mid.spherical_transmit_delay_model = spherical_transmit_delay_model.hybrid;
-        mid.pw_margin = 2/1000;
-        mid.transmit_apodization.window = uff.window.tukey25;
-        mid.transmit_apodization.f_number = 2.5;
-        mid.transmit_apodization.MLA = MLA;
-        mid.transmit_apodization.MLA_overlap = MLA;
-        mid.transmit_apodization.minimum_aperture = [2.5e-03 2.5e-03];
-        mid.receive_apodization.window = uff.window.hamming;
+        mid.transmit_apodization.window = uff.window.scanline;
+        mid.receive_apodization.window = uff.window.none;
         mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
@@ -402,51 +402,6 @@ switch fn
         mid.transmit_apodization.f_number = Fnumber;
         mid.transmit_apodization.minimum_aperture = 3e-3;
         b_data = mid.go();
-
-    case 'L7_FI_Verasonics_CIRS_points.uff'
-        % publications/TUFFC/.../FI_UFF_delay_multiply_and_sum_Fig5_and_Fig6.m (DAS)
-        channel_data = uff.read_object(uff_file, '/channel_data');
-        z_axis = linspace(5e-3, 45e-3, 1700).';
-        x_axis = zeros(channel_data.N_waves, 1);
-        for n = 1:channel_data.N_waves
-            x_axis(n) = channel_data.sequence(n).source.x;
-        end
-        scan = uff.linear_scan('x_axis', x_axis, 'z_axis', z_axis);
-        delay = midprocess.das();
-        delay.channel_data = channel_data;
-        delay.scan = scan;
-        delay.dimension = dimension.transmit();
-        delay.transmit_apodization.window = uff.window.scanline;
-        delay.receive_apodization.window = uff.window.none;
-        delay.receive_apodization.f_number = 1.7;
-        delayed_b_data = delay.go();
-        das = postprocess.coherent_compounding();
-        das.input = delayed_b_data;
-        b_data = das.go();
-
-    case 'L7_FI_carotid_cross_sub_2.uff'
-        % publications/TUFFC/.../Invivo_experiment_MLA.m (DAS with MLA pipeline)
-        channel_data = uff.channel_data();
-        channel_data.read(uff_file, '/channel_data');
-        if size(channel_data.data, 4) >= 2
-            channel_data.data = channel_data.data(:, :, :, 2);
-        end
-        MLA = 4;
-        z_axis = linspace(7e-3, 25e-3, 768).';
-        x_axis = linspace(channel_data.sequence(1).source.x, channel_data.sequence(end).source.x, ...
-            channel_data.N_waves .* MLA);
-        scan = uff.linear_scan('x_axis', x_axis', 'z_axis', z_axis);
-        pipe = pipeline();
-        pipe.scan = scan;
-        pipe.channel_data = channel_data;
-        pipe.transmit_apodization.window = uff.window.scanline;
-        pipe.transmit_apodization.MLA = [MLA, 1];
-        pipe.transmit_apodization.MLA_overlap = [2, 0];
-        pipe.receive_apodization.window = uff.window.boxcar;
-        pipe.receive_apodization.f_number = 1;
-        das = midprocess.das();
-        das.dimension = dimension.both;
-        b_data = pipe.go({das});
 
     case 'invitro_20.uff'
         % publications/TUFFC/.../Invitro_experiment.m
