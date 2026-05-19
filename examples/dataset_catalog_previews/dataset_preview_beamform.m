@@ -56,12 +56,10 @@ switch fn
         mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
-    case 'L7_CPWC_TheGB.uff'
-        % examples/.../speed_of_sound.m (Part I, 1460 m/s, single transmit)
+    case {'L7_CPWC_TheGB.uff', 'L7_DW_TheGB.uff', 'L7_STA_TheGB.uff'}
+        % sandbox/The_Generalized_Beamformer/UFF_Verasonics_all.m
         channel_data = uff.read_object(uff_file, '/channel_data');
         channel_data.N_frames = 1;
-        channel_data.sequence = channel_data.sequence(6);
-        channel_data.data = channel_data.data(:, :, 6);
         channel_data.sound_speed = 1460;
         for seq = 1:channel_data.N_waves
             channel_data.sequence(seq).sound_speed = channel_data.sound_speed;
@@ -74,7 +72,36 @@ switch fn
         mid.channel_data = channel_data;
         mid.scan = scan;
         mid.transmit_apodization.window = uff.window.none;
-        mid.receive_apodization.window = uff.window.tukey50;
+        mid.transmit_apodization.f_number = 1.7;
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
+        b_data = mid.go();
+
+    case 'L7_FI_TheGB.uff'
+        % sandbox/The_Generalized_Beamformer/UFF_Verasonics_all.m (focused RTB)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        channel_data.N_frames = 1;
+        channel_data.sound_speed = 1460;
+        for seq = 1:channel_data.N_waves
+            channel_data.sequence(seq).sound_speed = channel_data.sound_speed;
+        end
+        scan = uff.linear_scan();
+        scan.x_axis = linspace(channel_data.probe.x(1), channel_data.probe.x(end), 512).';
+        scan.z_axis = linspace(3e-3, 50e-3, 512).';
+        MLA = round(512 / channel_data.N_waves);
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.spherical_transmit_delay_model = spherical_transmit_delay_model.hybrid;
+        mid.pw_margin = 2/1000;
+        mid.transmit_apodization.window = uff.window.tukey25;
+        mid.transmit_apodization.f_number = 2.5;
+        mid.transmit_apodization.MLA = MLA;
+        mid.transmit_apodization.MLA_overlap = MLA;
+        mid.transmit_apodization.minimum_aperture = [2.5e-03 2.5e-03];
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
     case 'Alpinion_L3-8_FI_hyperechoic_scatterers.uff'
@@ -543,38 +570,45 @@ end
 
 function b_data = generic_beamform(uff_file)
 %GENERIC_BEAMFORM  Auto-detect scan type and beamform with standard parameters.
+%   Sector scan only for phased arrays (small aperture, <20mm).
+%   Linear scan for everything else (L7, L3-8, etc.).
 channel_data = uff.read_object(uff_file, '/channel_data');
 
-% Detect sector vs linear: if source has non-zero azimuth, use sector scan
-is_sector = false;
-if ~isempty(channel_data.sequence(1).source) && ...
-        ~isempty(channel_data.sequence(1).source.azimuth) && ...
-        abs(channel_data.sequence(1).source.azimuth) > 0.01
-    is_sector = true;
-end
+% Phased arrays have small aperture (<20mm); linear arrays are wider.
+aperture = max(channel_data.probe.x) - min(channel_data.probe.x);
+is_phased_array = aperture < 0.020;
 
-if is_sector
+if is_phased_array
     az = zeros(channel_data.N_waves, 1);
     for n = 1:channel_data.N_waves
         az(n) = channel_data.sequence(n).source.azimuth;
     end
     scan = uff.sector_scan('azimuth_axis', az, ...
         'depth_axis', linspace(0, 110e-3, 512).');
+    mid = midprocess.das();
+    mid.channel_data = channel_data;
+    mid.dimension = dimension.both();
+    mid.scan = scan;
+    mid.receive_apodization.window = uff.window.hanning;
+    mid.receive_apodization.f_number = 1.75;
+    mid.transmit_apodization.window = uff.window.hanning;
+    mid.transmit_apodization.f_number = 1.75;
 else
-    x_range = max(channel_data.probe.x) - min(channel_data.probe.x);
+    % Linear array: use linear scan matching probe extent
+    x_range = aperture;
     scan = uff.linear_scan(...
         'x_axis', linspace(-x_range*0.8, x_range*0.8, 256).', ...
-        'z_axis', linspace(1e-3, 55e-3, 512).');
+        'z_axis', linspace(3e-3, 50e-3, 512).');
+    mid = midprocess.das();
+    mid.channel_data = channel_data;
+    mid.dimension = dimension.both();
+    mid.scan = scan;
+    mid.receive_apodization.window = uff.window.hamming;
+    mid.receive_apodization.f_number = 1.7;
+    mid.transmit_apodization.window = uff.window.none;
+    mid.transmit_apodization.f_number = 1.7;
 end
 
-mid = midprocess.das();
-mid.channel_data = channel_data;
-mid.dimension = dimension.both();
-mid.scan = scan;
-mid.receive_apodization.window = uff.window.hanning;
-mid.receive_apodization.f_number = 1.75;
-mid.transmit_apodization.window = uff.window.hanning;
-mid.transmit_apodization.f_number = 1.75;
 b_data = mid.go();
 end
 
