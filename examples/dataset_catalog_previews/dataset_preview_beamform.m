@@ -246,25 +246,24 @@ switch fn
         pipe.transmit_apodization.f_number = 1.7;
         b_data = pipe.go({midprocess.das postprocess.coherent_compounding});
 
-    case 'Verasonics_P2-4_parasternal_long_subject_1.uff'
-        % examples/advanced_beamforming/FI_UFF_short_lag_spatial_coherence.m (cardiac DAS)
+    case {'Verasonics_P2-4_parasternal_long_subject_1.uff', ...
+          'Verasonics_P2-4_apical_four_chamber_subject_1.uff'}
+        % Cardiac phased array — scanline (1 MLA)
         channel_data = uff.read_object(uff_file, '/channel_data');
-        depth_axis = linspace(0e-3, 110e-3, 512).';
         azimuth_axis = zeros(channel_data.N_waves, 1);
         for n = 1:channel_data.N_waves
             azimuth_axis(n) = channel_data.sequence(n).source.azimuth;
         end
-        scan = uff.sector_scan('azimuth_axis', azimuth_axis, 'depth_axis', depth_axis);
+        scan = uff.sector_scan('azimuth_axis', azimuth_axis, ...
+            'depth_axis', linspace(0, 110e-3, 512).');
         mid = midprocess.das();
-        mid.dimension = dimension.transmit;
+        mid.dimension = dimension.both();
         mid.channel_data = channel_data;
         mid.scan = scan;
         mid.transmit_apodization.window = uff.window.scanline;
         mid.receive_apodization.window = uff.window.none;
-        b_delayed = mid.go();
-        das = postprocess.coherent_compounding();
-        das.input = b_delayed;
-        b_data = das.go();
+        mid.receive_apodization.f_number = 1.75;
+        b_data = mid.go();
 
     case 'FieldII_P4_point_scatterers.uff'
         % examples/.../FI_UFF_phased_array_exercise.m
@@ -539,24 +538,6 @@ switch fn
     case 'reference_RTB_data.uff'
         b_data = uff.read_object(uff_file, '/b_data');
 
-    case 'Verasonics_P2-4_apical_four_chamber_subject_1.uff'
-        % Cardiac apical 4-chamber — scanline (1 MLA)
-        channel_data = uff.read_object(uff_file, '/channel_data');
-        azimuth_axis = zeros(channel_data.N_waves, 1);
-        for n = 1:channel_data.N_waves
-            azimuth_axis(n) = channel_data.sequence(n).source.azimuth;
-        end
-        scan = uff.sector_scan('azimuth_axis', azimuth_axis, ...
-            'depth_axis', linspace(0, 110e-3, 512).');
-        mid = midprocess.das();
-        mid.dimension = dimension.both();
-        mid.channel_data = channel_data;
-        mid.scan = scan;
-        mid.transmit_apodization.window = uff.window.scanline;
-        mid.receive_apodization.window = uff.window.none;
-        mid.receive_apodization.f_number = 1.75;
-        b_data = mid.go();
-
     case {'PICMUS_carotid_long.uff', 'PICMUS_carotid_cross.uff', ...
           'PICMUS_experiment_resolution_distortion.uff', 'PICMUS_experiment_contrast_speckle.uff', ...
           'PICMUS_simulation_resolution_distortion.uff', 'PICMUS_simulation_contrast_speckle.uff', ...
@@ -596,11 +577,11 @@ switch fn
         b_data = mid.go();
 
     case {'SWE_L7_type_I.uff', 'SWE_L7_type_III.uff', 'SWE_L7_type_IV.uff'}
-        % Shear wave: single PW, use narrow scan around tracking region
+        % Shear wave: single PW, full probe width, z to 55mm
         channel_data = uff.read_object(uff_file, '/channel_data');
         x_half = (max(channel_data.probe.x) - min(channel_data.probe.x)) / 2;
-        scan = uff.linear_scan('x_axis', linspace(-x_half*0.6, x_half*0.6, 256).', ...
-            'z_axis', linspace(5e-3, 45e-3, 256).');
+        scan = uff.linear_scan('x_axis', linspace(-x_half, x_half, 256).', ...
+            'z_axis', linspace(5e-3, 55e-3, 256).');
         mid = midprocess.das();
         mid.dimension = dimension.both;
         mid.channel_data = channel_data;
@@ -611,11 +592,11 @@ switch fn
         b_data = mid.go();
 
     case 'FieldII_STAI_simulated_dynamic_range.uff'
-        % STA: narrower x, deeper z
+        % STA: probe width, z to 60mm
         channel_data = uff.read_object(uff_file, '/channel_data');
         x_half = (max(channel_data.probe.x) - min(channel_data.probe.x)) / 2;
-        scan = uff.linear_scan('x_axis', linspace(-x_half*0.8, x_half*0.8, 256).', ...
-            'z_axis', linspace(5e-3, 50e-3, 512).');
+        scan = uff.linear_scan('x_axis', linspace(-x_half, x_half, 256).', ...
+            'z_axis', linspace(5e-3, 60e-3, 512).');
         mid = midprocess.das();
         mid.dimension = dimension.both;
         mid.channel_data = channel_data;
