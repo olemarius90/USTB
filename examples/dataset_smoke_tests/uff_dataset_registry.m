@@ -39,7 +39,6 @@ T = add(T, 'Verasonics_P2-4_parasternal_long_subject_1.uff', '', 'beamform', 'ex
 T = add(T, 'FieldII_P4_point_scatterers.uff', '', 'beamform', 'examples: UiO phased array exercise');
 T = add(T, 'experimental_STAI_dynamic_range.uff', '/channel_data', 'beamform', 'examples: UiO STAI sandbox');
 T = add(T, 'P4_FI_121444_45mm_focus.uff', '', 'beamform', 'examples: REFoCUS');
-T = add(T, 'FieldII_speckle_simulation.uff', '', 'beamform', 'examples: field_II STAI speckle parfor');
 
 % --- additional Zenodo datasets (not yet referenced in examples/) ---
 T = add(T, 'Alpinion_L3-8_CPWC_hypoechoic.uff', '', 'beamform', 'Alpinion CPWC hypoechoic phantom');

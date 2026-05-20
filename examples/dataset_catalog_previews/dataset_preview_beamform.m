@@ -56,8 +56,8 @@ switch fn
         mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
-    case {'L7_CPWC_TheGB.uff', 'L7_DW_TheGB.uff', 'L7_STA_TheGB.uff'}
-        % sandbox/The_Generalized_Beamformer/UFF_Verasonics_all.m
+    case {'L7_CPWC_TheGB.uff', 'L7_DW_TheGB.uff'}
+        % sandbox/The_Generalized_Beamformer/UFF_Verasonics_all.m (CPWC/DW)
         channel_data = uff.read_object(uff_file, '/channel_data');
         channel_data.N_frames = 1;
         channel_data.sound_speed = 1460;
@@ -77,10 +77,32 @@ switch fn
         mid.receive_apodization.f_number = 1.7;
         b_data = mid.go();
 
+    case 'L7_STA_TheGB.uff'
+        % sandbox/The_Generalized_Beamformer — STA with scanline (1 MLA)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        channel_data.N_frames = 1;
+        channel_data.sound_speed = 1460;
+        for seq = 1:channel_data.N_waves
+            channel_data.sequence(seq).sound_speed = channel_data.sound_speed;
+        end
+        scan = uff.linear_scan();
+        scan.x_axis = linspace(channel_data.probe.x(1), channel_data.probe.x(end), 256).';
+        scan.z_axis = linspace(3e-3, 50e-3, 512).';
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.boxcar;
+        mid.transmit_apodization.f_number = 1.7;
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
+        b_data = mid.go();
+
     case {'L7_FI_TheGB.uff', 'L7_FI_Verasonics.uff', 'L7_FI_Verasonics_CIRS.uff', ...
           'L7_FI_Verasonics_CIRS_points.uff', 'L7_FI_carotid_cross_1.uff', ...
-          'L7_FI_carotid_cross_2.uff', 'L7_FI_carotid_cross_sub_2.uff'}
-        % Conventional scanline FI: 1 transmit per line, no MLA/RTB artifacts
+          'L7_FI_carotid_cross_2.uff', 'L7_FI_carotid_cross_sub_2.uff', ...
+          'FieldII_speckle_DMASsimulation300000pts.uff'}
+        % Conventional scanline FI: 1 transmit per line, no focus artifact
         channel_data = uff.read_object(uff_file, '/channel_data');
         if contains(fn, 'TheGB')
             channel_data.N_frames = 1;
@@ -93,7 +115,8 @@ switch fn
         for n = 1:channel_data.N_waves
             x_axis(n) = channel_data.sequence(n).source.x;
         end
-        z_axis = linspace(1e-3, 55e-3, 512).';
+        max_z = (size(channel_data.data,1)/channel_data.sampling_frequency)*channel_data.sound_speed/2;
+        z_axis = linspace(1e-3, max_z*0.85, 512).';
         scan = uff.linear_scan('x_axis', x_axis, 'z_axis', z_axis);
         mid = midprocess.das();
         mid.dimension = dimension.both();
@@ -380,27 +403,25 @@ switch fn
         mid.receive_apodization.f_number = 1.0;
         b_data = mid.go();
 
-    case 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'
-        % publications/.../Correction_of_simulated_blockage.m (RTB block)
+    case {'speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff', ...
+          'speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff', ...
+          'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff'}
+        % Vralstad blocked array — P4 sector, scanline (1 MLA)
         channel_data = uff.read_object(uff_file, '/channel_data');
         channel_data.data = channel_data.data ./ max(channel_data.data(:));
-        depth_axis = linspace(0e-3, 110e-3, 512).';
         azimuth_axis = zeros(channel_data.N_waves, 1);
         for n = 1:channel_data.N_waves
             azimuth_axis(n) = channel_data.sequence(n).source.azimuth;
         end
-        scan = uff.sector_scan('azimuth_axis', azimuth_axis, 'depth_axis', depth_axis);
-        Fnumber = channel_data.sequence(1).source.distance / (max(channel_data.probe.x) * 2);
+        scan = uff.sector_scan('azimuth_axis', azimuth_axis, ...
+            'depth_axis', linspace(0, 110e-3, 512).');
         mid = midprocess.das();
         mid.channel_data = channel_data;
         mid.dimension = dimension.both();
         mid.scan = scan;
-        mid.code = code.mex;
-        mid.receive_apodization.window = uff.window.boxcar;
+        mid.transmit_apodization.window = uff.window.scanline;
+        mid.receive_apodization.window = uff.window.none;
         mid.receive_apodization.f_number = 1.7;
-        mid.transmit_apodization.window = uff.window.hamming;
-        mid.transmit_apodization.f_number = Fnumber;
-        mid.transmit_apodization.minimum_aperture = 3e-3;
         b_data = mid.go();
 
     case 'invitro_20.uff'
@@ -517,6 +538,93 @@ switch fn
 
     case 'reference_RTB_data.uff'
         b_data = uff.read_object(uff_file, '/b_data');
+
+    case 'Verasonics_P2-4_apical_four_chamber_subject_1.uff'
+        % Cardiac apical 4-chamber — scanline (1 MLA)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        azimuth_axis = zeros(channel_data.N_waves, 1);
+        for n = 1:channel_data.N_waves
+            azimuth_axis(n) = channel_data.sequence(n).source.azimuth;
+        end
+        scan = uff.sector_scan('azimuth_axis', azimuth_axis, ...
+            'depth_axis', linspace(0, 110e-3, 512).');
+        mid = midprocess.das();
+        mid.dimension = dimension.both();
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.scanline;
+        mid.receive_apodization.window = uff.window.none;
+        mid.receive_apodization.f_number = 1.75;
+        b_data = mid.go();
+
+    case {'PICMUS_carotid_long.uff', 'PICMUS_carotid_cross.uff', ...
+          'PICMUS_experiment_resolution_distortion.uff', 'PICMUS_experiment_contrast_speckle.uff', ...
+          'PICMUS_simulation_resolution_distortion.uff', 'PICMUS_simulation_contrast_speckle.uff', ...
+          'PICMUS_numerical_calib_v2.uff'}
+        % PICMUS: use /scan from file (defines correct ROI)
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        if has_h5_dataset(uff_file, '/scan')
+            scan = uff.read_object(uff_file, '/scan');
+        else
+            scan = uff.linear_scan('x_axis', linspace(-19e-3, 19e-3, 256).', ...
+                'z_axis', linspace(5e-3, 50e-3, 256).');
+        end
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.none;
+        mid.transmit_apodization.f_number = 1.7;
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
+        b_data = mid.go();
+
+    case {'Alpinion_L3-8_CPWC_hypoechoic.uff', 'Alpinion_L3-8_CPWC_hyperechoic_scatterers.uff'}
+        % Alpinion CPWC: x within probe, z to 50mm
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        x_half = (max(channel_data.probe.x) - min(channel_data.probe.x)) / 2;
+        scan = uff.linear_scan('x_axis', linspace(-x_half*0.8, x_half*0.8, 256).', ...
+            'z_axis', linspace(5e-3, 50e-3, 256).');
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.none;
+        mid.transmit_apodization.f_number = 1.7;
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
+        b_data = mid.go();
+
+    case {'SWE_L7_type_I.uff', 'SWE_L7_type_III.uff', 'SWE_L7_type_IV.uff'}
+        % Shear wave: single PW, use narrow scan around tracking region
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        x_half = (max(channel_data.probe.x) - min(channel_data.probe.x)) / 2;
+        scan = uff.linear_scan('x_axis', linspace(-x_half*0.6, x_half*0.6, 256).', ...
+            'z_axis', linspace(5e-3, 45e-3, 256).');
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.none;
+        mid.receive_apodization.window = uff.window.hamming;
+        mid.receive_apodization.f_number = 1.7;
+        b_data = mid.go();
+
+    case 'FieldII_STAI_simulated_dynamic_range.uff'
+        % STA: narrower x, deeper z
+        channel_data = uff.read_object(uff_file, '/channel_data');
+        x_half = (max(channel_data.probe.x) - min(channel_data.probe.x)) / 2;
+        scan = uff.linear_scan('x_axis', linspace(-x_half*0.8, x_half*0.8, 256).', ...
+            'z_axis', linspace(5e-3, 50e-3, 512).');
+        mid = midprocess.das();
+        mid.dimension = dimension.both;
+        mid.channel_data = channel_data;
+        mid.scan = scan;
+        mid.transmit_apodization.window = uff.window.boxcar;
+        mid.transmit_apodization.f_number = 1.75;
+        mid.receive_apodization.window = uff.window.boxcar;
+        mid.receive_apodization.f_number = 1.75;
+        b_data = mid.go();
 
     otherwise
         b_data = generic_beamform(uff_file);
