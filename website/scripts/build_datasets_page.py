@@ -101,6 +101,10 @@ def build_html(rows: list[dict]) -> str:
     for r in rows:
         fn = r["filename"]
         mode = r["mode"]
+        if mode == "beamformed_only":
+            contains_str = "beamformed data"
+        else:
+            contains_str = "channel data"
         note = r["note"].replace("&", "&amp;").replace("<", "&lt;")
         slug_v = slug(fn)
         rel_img = f"assets/images/datasets/{slug_v}.png"
@@ -111,7 +115,7 @@ def build_html(rows: list[dict]) -> str:
                     <img src="{rel_img}" alt="Preview for {fn}" loading="lazy" width="400" height="260">
                 </a>
                 <h3><a href="{url}" target="_blank" rel="noopener">{fn}</a></h3>
-                <p class="dataset-meta"><strong>Processing</strong>: {mode}</p>
+                <p class="dataset-meta"><strong>Contains</strong>: {contains_str}</p>
                 <p class="dataset-note">{note}</p>
                 <p><a href="{url}" target="_blank" rel="noopener">Download (.uff)</a></p>
             </article>"""
