@@ -525,35 +525,65 @@ end
 
 function b_data = generic_beamform(uff_file)
 %GENERIC_BEAMFORM  Auto-detect scan type and beamform with standard parameters.
-%   Sector scan only for phased arrays (small aperture, <20mm).
-%   Linear scan for everything else (L7, L3-8, etc.).
+%   - Phased arrays (aperture < 20mm): sector scan with scanline TX (1 MLA)
+%   - Linear FI (finite focus): linear scan with scanline TX (1 MLA)
+%   - Linear CPWC/DW/STA (infinite or near-zero focus): linear scan, dimension.both
 channel_data = uff.read_object(uff_file, '/channel_data');
 
-% Phased arrays have small aperture (<20mm); linear arrays are wider.
 aperture = max(channel_data.probe.x) - min(channel_data.probe.x);
 is_phased_array = aperture < 0.020;
 
+% Estimate max imaging depth from data length
+max_depth = (size(channel_data.data, 1) / channel_data.sampling_frequency) ...
+    * channel_data.sound_speed / 2;
+max_depth = min(max_depth, 0.12);  % Cap at 120mm
+
+% Detect focused imaging: finite focus distance well beyond probe surface.
+% STA has source at each element (distance ~ abs(source.x)), FI has distance >> aperture/2.
+is_focused = false;
+if ~isempty(channel_data.sequence(1).source.distance) && ...
+        isfinite(channel_data.sequence(1).source.distance) && ...
+        channel_data.sequence(1).source.distance > aperture
+    is_focused = true;
+end
+
 if is_phased_array
+    % Phased array: sector scan, scanline TX (1 MLA for focused)
     az = zeros(channel_data.N_waves, 1);
     for n = 1:channel_data.N_waves
         az(n) = channel_data.sequence(n).source.azimuth;
     end
     scan = uff.sector_scan('azimuth_axis', az, ...
-        'depth_axis', linspace(0, 110e-3, 512).');
+        'depth_axis', linspace(0, max_depth, 512).');
     mid = midprocess.das();
     mid.channel_data = channel_data;
     mid.dimension = dimension.both();
     mid.scan = scan;
-    mid.receive_apodization.window = uff.window.hanning;
+    mid.transmit_apodization.window = uff.window.scanline;
+    mid.receive_apodization.window = uff.window.none;
     mid.receive_apodization.f_number = 1.75;
-    mid.transmit_apodization.window = uff.window.hanning;
-    mid.transmit_apodization.f_number = 1.75;
+elseif is_focused
+    % Linear array, focused imaging: scanline TX (1 MLA, no focus artifact)
+    x_axis = zeros(channel_data.N_waves, 1);
+    for n = 1:channel_data.N_waves
+        x_axis(n) = channel_data.sequence(n).source.x;
+    end
+    z_axis = linspace(1e-3, max_depth * 0.9, 512).';
+    scan = uff.linear_scan('x_axis', x_axis, 'z_axis', z_axis);
+    mid = midprocess.das();
+    mid.channel_data = channel_data;
+    mid.dimension = dimension.both();
+    mid.scan = scan;
+    mid.transmit_apodization.window = uff.window.scanline;
+    mid.receive_apodization.window = uff.window.none;
+    mid.receive_apodization.f_number = 1.7;
 else
-    % Linear array: use linear scan matching probe extent
-    x_range = aperture;
+    % CPWC / DW / STA: linear scan within probe width, compound all transmits
+    x_half = aperture / 2;
+    z_max = max_depth * 0.85;
     scan = uff.linear_scan(...
-        'x_axis', linspace(-x_range*0.8, x_range*0.8, 256).', ...
-        'z_axis', linspace(3e-3, 50e-3, 512).');
+        'x_axis', linspace(-x_half, x_half, 256).', ...
+        'z_axis', linspace(2e-3, z_max, 512).');
     mid = midprocess.das();
     mid.channel_data = channel_data;
     mid.dimension = dimension.both();
