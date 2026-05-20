@@ -71,7 +71,6 @@ T = add(T, 'speckle_sim_FI_P4_probe_apod_3_speckle_long_many_angles.uff', '', 'b
 T = add(T, 'L7_FI_Verasonics_CIRS_points.uff', '', 'beamform', 'publications: TUFFC fDMAS');
 T = add(T, 'L7_FI_carotid_cross_sub_2.uff', '', 'beamform', 'publications: TUFFC GCNR');
 T = add(T, 'invitro_20.uff', '', 'beamform', 'publications: TUFFC GCNR');
-T = add(T, 'insilico_side_100_M45.uff', '', 'beamform', 'publications: TUFFC GCNR');
 T = add(T, 'insilico_20.uff', '', 'beamform', 'publications: IUS2019 GCNR NLM');
 T = add(T, 'FieldII_CPWC_point_scatterers_res_v2.uff', '', 'beamform', 'publications: IUS2020 resolution');
 T = add(T, 'beamformed_simulated_data.uff', '', 'beamformed_only', 'publications: IUS2017 dark region (beamformed only)');
