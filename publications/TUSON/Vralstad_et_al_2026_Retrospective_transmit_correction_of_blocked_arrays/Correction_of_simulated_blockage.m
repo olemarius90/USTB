@@ -188,26 +188,25 @@ tools.publish_beamformed_snap(b_data_REFoCUS, 'REFoCUS');
 
 %% Save PNGs
 f = figure('Visible', tools.headless_publish_figure_visible());
-b_data_RTB.plot(f,'RTB');
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20]);
-savefig(f,[storefolder,'RTB_', tag,'.fig']);
+b_data_RTB.plot(f, 'RTB');
+delete(findall(f, 'Type', 'uicontrol'));
+clim([-60 0]); xlim([-20 20]);
 saveas(f,[storefolder,'RTB_', tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; snapnow; close(f);
 
-b_data_RTB_comp.plot(f,'RTB Compensated');
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20]);
-savefig(f,[storefolder,'RTB_compensated_', tag,'.fig']);
+f = figure('Visible', tools.headless_publish_figure_visible());
+b_data_RTB_comp.plot(f, 'RTB Compensated');
+delete(findall(f, 'Type', 'uicontrol'));
+clim([-60 0]); xlim([-20 20]);
 saveas(f,[storefolder,'RTB_compensated_', tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; snapnow; close(f);
 
-b_data_REFoCUS.plot(f,'REFoCUS');
-rectangle(gca,'Position',[-6 5 7 105],'EdgeColor','r','LineWidth',2)
-clim([-60 0]);xlim([-20 20])
-savefig(f,[storefolder,'REFoCUS_', tag,'.fig']);
+f = figure('Visible', tools.headless_publish_figure_visible());
+b_data_REFoCUS.plot(f, 'REFoCUS');
+delete(findall(f, 'Type', 'uicontrol'));
+clim([-60 0]); xlim([-20 20]);
 saveas(f,[storefolder,'REFoCUS_', tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; snapnow; close(f);
 
 %% Comparison (multi-frame: RTB, RTB Compensated, REFoCUS)
 b_data_compare = uff.beamformed_data(b_data_RTB);
@@ -259,6 +258,7 @@ set(findall(gcf, '-property', 'FontSize'), 'FontSize', 14);
 title('ROI regions for gCNR');
 drawnow;
 tools.publish_snap_now_figure(f_roi);
+close(f_roi);
 
 % Compute gCNR for each beamforming method
 GCNR = cell(1, numel(img_cell));
@@ -280,6 +280,7 @@ end
 set(findall(gcf, '-property', 'FontSize'), 'FontSize', 12);
 drawnow;
 tools.publish_snap_now_figure(f_hist);
+close(f_hist);
 fprintf('gCNR: RTB=%.3f, RTB Comp=%.3f, REFoCUS=%.3f\n', GCNR{1}, GCNR{2}, GCNR{3});
 
 %% Make Difference Images: of RTBs
@@ -294,7 +295,7 @@ title('RTB - RTB Compensated');
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'RTBminusRTBcomp_',tag,'.fig']);
 saveas(f,[storefolder,'RTBminusRTBcomp_',tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; tools.publish_snap_now_figure(f); close(f);
 
 %% Make Difference Images: RTB comp and REFoCUS 
 all_images = b_data_compare.get_image();
@@ -308,7 +309,7 @@ title('REFoCUS - RTB Compensated');
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.fig']);
 saveas(f,[storefolder,'REFoCUSminusRTBcomp_',tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; tools.publish_snap_now_figure(f); close(f);
 
 %% Make Difference Images: RTB and REFoCUS 
 all_images = b_data_compare.get_image();
@@ -322,4 +323,4 @@ title('REFoCUS - RTB');
 set(findall(gcf,'-property','FontSize'),'FontSize',15)
 savefig(f,[storefolder,'REFoCUSminusRTB_',tag,'.fig']);
 saveas(f,[storefolder,'REFoCUSminusRTB_',tag,'.png']);
-drawnow; tools.publish_snap_now_figure(f);
+drawnow; tools.publish_snap_now_figure(f); close(f);
