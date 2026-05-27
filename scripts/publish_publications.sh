@@ -14,21 +14,22 @@ set -e
 set -o pipefail 2>/dev/null || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck source=publish_common.sh
 . "${SCRIPT_DIR}/publish_common.sh"
 
 publish_common_matlab_extra
 
-OUTPUT_DIR="${SCRIPT_DIR}/publications_html"
+OUTPUT_DIR="${REPO_ROOT}/publications_html"
 TARBALL="publications-html.tar.gz"
 
-SCRIPT_DIR_M=$(publish_repo_path_for_matlab "$SCRIPT_DIR")
+REPO_ROOT_M=$(publish_repo_path_for_matlab "$REPO_ROOT")
 OUTPUT_DIR_M=$(publish_repo_path_for_matlab "$OUTPUT_DIR")
 
 echo "=== USTB publication HTML publisher ==="
 echo "Scripts: publish_all_publications.m (website/publications.html)"
 echo "Output: ${OUTPUT_DIR}"
-echo "(MATLAB paths: repo ${SCRIPT_DIR_M} → ${OUTPUT_DIR_M})"
+echo "(MATLAB paths: repo ${REPO_ROOT_M} → ${OUTPUT_DIR_M})"
 echo ""
 
 rm -rf "${OUTPUT_DIR}"
@@ -37,7 +38,7 @@ mkdir -p "${OUTPUT_DIR}"
 publish_require_matlab
 
 echo "Publishing (evalCode, all publication iframes)..."
-matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "cd('${SCRIPT_DIR_M}'); addpath(genpath(pwd)); publish_all_publications('${OUTPUT_DIR_M}');" 2>&1 | tee publish_publications.log
+matlab "${MATLAB_BATCH_EXTRA[@]}" -batch "cd('${REPO_ROOT_M}'); addpath(genpath(pwd)); publish_all_publications('${OUTPUT_DIR_M}');" 2>&1 | tee publish_publications.log
 
 echo ""
 echo "=== Required HTML outputs ==="
