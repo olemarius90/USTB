@@ -41,6 +41,11 @@ for r = 1:size(dataset_roi, 1)
     cd_roi = uff.read_object([data_path(), filesep, fn_roi], '/channel_data');
     cd_roi.data = cd_roi.data ./ max(cd_roi.data(:));
 
+    % Reset wave origins — phased array aperture center is always at [0,0,0]
+    for n_w = 1:cd_roi.N_waves
+        cd_roi.sequence(n_w).origin = uff.point();
+    end
+
     depth_roi = linspace(0e-3, 110e-3, 512).';
     az_roi = zeros(cd_roi.N_waves, 1);
     for n = 1:cd_roi.N_waves
@@ -93,6 +98,13 @@ tools.download(filename, url, data_path());
 
 channel_data = uff.read_object([data_path(), filesep, filename], '/channel_data');
 channel_data.data = channel_data.data ./ max(channel_data.data(:));
+
+% Reset wave origins to [0,0,0] — fix_origin_from_source incorrectly sets
+% origin.x = source.x for phased arrays where the aperture center is always
+% at the probe center regardless of steering angle.
+for n = 1:channel_data.N_waves
+    channel_data.sequence(n).origin = uff.point();
+end
 
 storefolder = ['./Figures/simulated_gCNR_',tag, '/'];
 mkdir(storefolder);
@@ -167,7 +179,6 @@ colormap default;
 demod = preprocess.fast_demodulation();
 demod.modulation_frequency = 2.5*10^6;
 demod.input = channel_data_REFoCUS;
-demod.plot_on = true;
 channel_data_STAI_demod = demod.go();
 %% REFoCUS Beamforming
 mid_REFoCUS = midprocess.das();
@@ -180,7 +191,6 @@ mid_REFoCUS.receive_apodization.f_number=1.7;
 mid_REFoCUS.receive_apodization.window=uff.window.boxcar;
 mid_REFoCUS.transmit_apodization.f_number=1;
 b_data_delayed_REFoCUS = mid_REFoCUS.go();
-b_data_delayed_REFoCUS.plot([],'REFoCUS');
 cc = postprocess.coherent_compounding;
 cc.input = b_data_delayed_REFoCUS;
 b_data_REFoCUS = cc.go();
