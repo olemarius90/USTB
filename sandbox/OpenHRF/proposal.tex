@@ -1,20 +1,21 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[margin=2.5cm]{geometry}
+\usepackage[margin=2.2cm]{geometry}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{enumitem}
 \usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption}
 
 \title{\textbf{OpenH-RF Proposal:}\\[4pt]
-The UltraSound ToolBox (USTB) Channel Capture Dataset}
+The UltraSound ToolBox Channel Capture Collection}
 \author{
-  Ole Marius Hoel Rindal\textsuperscript{1},
-  Anders E.\ Vr\aa lstad\textsuperscript{1},
-  Alfonso Rodriguez-Molares\textsuperscript{2},\\
-  Andreas Austeng\textsuperscript{1}
-  \\[6pt]
-  \textsuperscript{1}University of Oslo (UiO), Norway \quad
-  \textsuperscript{2}NTNU, Norway
+  Ole Marius Hoel Rindal,
+  Y\"ucel Karabiyik,
+  Sven Peter N\"asholm,
+  Andreas Austeng
+  \\[4pt]
+  University of Oslo (UiO), Department of Informatics, Norway
 }
 \date{}
 
@@ -25,94 +26,199 @@ The UltraSound ToolBox (USTB) Channel Capture Dataset}
 % ------------------------------------------------------------------
 \section{Executive Summary}
 
-We propose to contribute \textbf{53 pre-beamformed (channel capture) ultrasound datasets} from the UltraSound ToolBox (USTB) initiative to OpenH-RF.
-The datasets span \textbf{in-vivo human cardiac and carotid imaging}, \textbf{tissue-mimicking phantoms}, and \textbf{physics-based Field~II simulations}, covering linear, phased-array, and convex probes with plane-wave, diverging-wave, focused, and synthetic-transmit-aperture sequences.
+\subsection*{The UltraSound ToolBox (USTB)}
+The USTB is a free, open-source MATLAB toolbox for beamforming, processing, and visualization of ultrasonic signals, first released in 2017~\cite{rodriguez2017ustb}.
+It is developed at the University of Oslo in collaboration with NTNU, Universit\'e de Lyon, and Johns Hopkins University.
+USTB provides a unified processing framework based on the Ultrasound File Format (UFF, HDF5-based) and a General Beamformer architecture supporting all common transmit sequences (plane wave, diverging wave, focused, synthetic aperture, and retrospective beamforming).
+According to Google Scholar, the USTB has been \textbf{referenced in more than 150 publications}, spanning a wide range of topics such as adaptive beamforming, image quality assessment, deep learning for ultrasound, and clinical imaging research.
 
-All data is openly hosted on Zenodo (\texttt{10.5281/zenodo.20261898}) under the \textbf{MIT license} and stored in the community-standard Ultrasound File Format (UFF/HDF5).
-We provide a conversion pipeline (\texttt{pyuff-ustb} $\rightarrow$ \texttt{zea}) that maps UFF channel data to the OpenH-RF format, along with DAS reference reconstructions and processing scripts.
-For simulated and phantom data, true ground truth (scatterer maps, known geometry) is available.
+\subsection*{Proposed Contribution}
+We propose to contribute \textbf{51 USTB channel-capture datasets to OpenH-RF}.
+The collection is diverse in anatomy, hardware, and experimental and applied acquisition strategies:
+\begin{itemize}[nosep]
+  \item[\textbf{A}] \textbf{In-vivo human (cardiac)} --- parasternal long-axis and apical four-chamber imaging (3 acquisitions).
+  \item[\textbf{B}] \textbf{In-vivo human (vascular)} --- carotid artery cross-section and longitudinal views (5 acquisitions).
+  \item[\textbf{C}] \textbf{Phantoms (Verasonics)} --- tissue-mimicking CIRS targets for resolution, contrast, and dynamic range evaluation (18 acquisitions).
+  \item[\textbf{D}] \textbf{Phantoms (Alpinion)} --- linear-array phantom benchmarks (4 acquisitions).
+  \item[\textbf{E}] \textbf{Simulations} --- wave-propagation-based synthetic channel data (Field~II): point scatterers, cysts, speckle, and blocked-array configurations (17 acquisitions).
+  \item[\textbf{F}] \textbf{Motion estimation} --- elastography phantoms for shear-wave and ARFI push-tracking (4 acquisitions).
+\end{itemize}
 
-The USTB project (\url{https://github.com/unioslo/USTB}, \url{https://www.ultrasoundtoolbox.com}) has been maintained since 2017 and is widely used for ultrasound beamforming research and education.
-All datasets with DAS reference reconstructions are cataloged at \url{https://www.ultrasoundtoolbox.com/datasets.html}.
+\noindent All data is openly hosted on Zenodo (\url{https://zenodo.org/records/20261898}).
+A catalog of all datasets, each with a reference Delay-And-Sum (DAS) beamformed B-mode image, is available at \url{https://unioslo.github.io/USTB/datasets.html}.
 
 % ------------------------------------------------------------------
 \section{Task \& Application Selection}
 
+\subsection*{Hardware}
+The experimental (non-simulated) channel data was recorded using two research ultrasound platforms, both providing full access to pre-beamformed RF channel data:
+\begin{itemize}[nosep]
+  \item \textbf{Verasonics Vantage 256} --- majority of datasets (cardiac, vascular, phantoms, SWE/ARFI)
+  \item \textbf{Alpinion E-Cube 12R} --- phantom imaging with the L3-8 linear probe
+\end{itemize}
+\noindent Four transducer probes were used:
+\begin{itemize}[nosep]
+  \item \textbf{P4-2 phased array} (64 elements, Verasonics) --- cardiac and focused imaging
+  \item \textbf{L7-4 linear array} (128 elements, Verasonics) --- vascular, phantom, and general imaging
+  \item \textbf{L3-8 linear array} (128 elements, Alpinion) --- phantom imaging (4 datasets)
+\end{itemize}
+
+\subsection*{Transmit Strategies}
+The collection covers five distinct transmit configurations:
+coherent plane-wave compounding (CPWC, 5--75 angles),
+diverging-wave imaging (DW, 25 virtual sources),
+focused single-line imaging (FI, 128 focused beams),
+synthetic transmit aperture (STA, 128 single-element transmits),
+and shear-wave push-tracking sequences.
+
+\subsection*{Dataset Breakdown}
+
 \begin{table}[h!]
 \centering
 \small
-\begin{tabular}{@{}llcrl@{}}
+\begin{tabular}{@{}cp{3.6cm}cp{1.8cm}cp{3.0cm}@{}}
 \toprule
-\textbf{Task Group} & \textbf{Application} & \textbf{Datasets} & \textbf{Tier} & \textbf{Hardware} \\
+\textbf{ID} & \textbf{Application} & \textbf{No.\ of acq.} & \textbf{Tier} & \textbf{No.\ of frames} & \textbf{Probe / TX} \\
 \midrule
-\multirow{2}{*}{6.1 Reconstruction}
-  & Echocardiography     & 3 & In-vivo human (x40) & Verasonics P2-4 \\
-  & General (carotid)    & 5 & In-vivo human (x40) & Verasonics L7-4 \\
-  & Phantom benchmarks   & 15 & Phantom (x1) & Verasonics/Alpinion \\
-  & Simulated phantoms   & 18 & Simulation (x1) & Field~II \\
+\multicolumn{6}{@{}l}{\textit{6.1 Generalized Reconstruction}} \\
+A & Echocardiography        & 3  & In-vivo (x40) & 80  & P4-2 / FI \\
+B & Carotid imaging         & 5  & In-vivo (x40) & 8   & L7-4 / FI, CPWC \\
+C & Phantom (Verasonics)    & 18 & Phantom (x1)  & 26  & L7-4, P4-2 / CPWC, FI, STA \\
+D & Phantom (Alpinion)      & 4  & Phantom (x1)  & 4   & L3-8 / FI, CPWC \\
+E & Simulated               & 17 & Simulation (x1) & 22 & Field~II / CPWC, STA, FI \\
 \midrule
-6.4 Motion Est.
-  & Shear Wave Elast.    & 3 & Phantom (x1) & Verasonics L7-4 \\
-  & ARFI                 & 1 & Phantom (x1) & Verasonics L7-4 \\
+\multicolumn{6}{@{}l}{\textit{6.4 Motion Estimation}} \\
+F & SWE / ARFI              & 4  & Phantom (x1)  & 800 & L7-4 / push-track \\
 \midrule
-6.1 Reconstruction
-  & Blocked array corr.  & 3 & Simulation (x1) & Field~II P4 \\
-  & Dynamic range eval.  & 5 & Simulation + Phantom (x1) & Field~II / Verasonics \\
+& \textbf{Total}            & \textbf{51} & & \textbf{940} & \\
 \bottomrule
 \end{tabular}
-\caption{Dataset summary. Total: 53 channel capture measurements.}
+\caption{Dataset breakdown by application group (labels A--F match the executive summary). No.\ of acq.\ = number of acquisitions; No.\ of frames = total channel-capture frames across all acquisitions in the group.}
 \end{table}
 
-\noindent\textbf{Weighted contribution:}
-8 in-vivo human datasets $\times$ 40 = 320, plus 45 phantom/simulation datasets $\times$ 1 = 45.
-\textbf{Total weighted: $\sim$365 equivalent measurements.}
+\vspace{0.3em}
+\noindent\textbf{Weighted contribution summary:}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Tier} & \textbf{No.\ of datasets} & \textbf{Weight} & \textbf{Points} \\
+\midrule
+In-vivo human (research platform) & 8 & $\times 40$ & 320 \\
+Phantom / table-top & 26 & $\times 1$ & 26 \\
+Simulation (digital) & 17 & $\times 1$ & 17 \\
+\midrule
+\textbf{Total} & \textbf{51} & & \textbf{363} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\noindent\textit{Weight denotes the OpenH-RF tier multiplier from the RFP (e.g.\ in-vivo human datasets on research platforms count $40\times$ toward the contribution total). Points $=$ No.\ of datasets $\times$ Weight.}
+
+% ------------------------------------------------------------------
+\begin{figure}[h!]
+\centering
+\small
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/cardiac_parasternal.png}
+  \caption{Cardiac P4-2}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/cardiac_apical.png}
+  \caption{Cardiac apical}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/carotid_cross.png}
+  \caption{Carotid L7-4}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/carotid_long.png}
+  \caption{Carotid long.}
+\end{subfigure}
+
+\vspace{0.3em}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/cpwc_phantom.png}
+  \caption{CPWC phantom}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/swe_phantom.png}
+  \caption{SWE phantom}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/fi_point_scatterers.png}
+  \caption{Point targets}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/dynamic_range_phantom.png}
+  \caption{Dyn.\ range}
+\end{subfigure}
+
+\vspace{0.3em}
+% Row 3
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/carotid_cross_sub2.png}
+  \caption{Carotid FI}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/picmus_numerical.png}
+  \caption{PICMUS CPWC}
+\end{subfigure}
+\begin{subfigure}[t]{0.24\textwidth}
+  \includegraphics[width=\textwidth]{thumbnails/fieldii_stai_dynamic_range.png}
+  \caption{Field~II STAI}
+\end{subfigure}
+\caption{Representative Delay-And-Sum (DAS) reconstructions (60\,dB dynamic range). Full catalog: \url{https://unioslo.github.io/USTB/datasets.html}}
+\label{fig:previews}
+\end{figure}
 
 % ------------------------------------------------------------------
 \section{Technical Approach}
 
 \subsection*{Data Format Conversion}
-Each UFF dataset is converted to OpenH-RF (\texttt{zea} HDF5) using a Python pipeline:
-
+Each UFF dataset is converted to OpenH-RF (\texttt{zea} HDF5) using a ready-made pipeline:
 \begin{enumerate}[nosep]
   \item Read UFF with \texttt{pyuff-ustb} (channel data, probe geometry, transmit sequence).
-  \item Map fields to \texttt{zea} scan dictionary (probe geometry, polar/azimuth angles, focus distances, t0 delays, sampling frequency, sound speed).
-  \item Generate DAS beamformed B-mode image as reference reconstruction using the USTB MATLAB beamformer or the Python \texttt{ustb} package.
+  \item Map to \texttt{zea} scan dictionary: \texttt{probe\_geometry} [N$_\text{el}$ $\times$ 3], \texttt{polar\_angles} [N$_\text{tx}$], \texttt{focus\_distances}, \texttt{t0\_delays} [N$_\text{tx}$ $\times$ N$_\text{el}$], \texttt{sampling\_frequency}, \texttt{sound\_speed}.
+  \item Generate Delay-And-Sum (DAS) B-mode image as reference reconstruction.
   \item Write \texttt{.hdf5} via \texttt{zea.File.create()}.
 \end{enumerate}
+\noindent Both a Python script and a MATLAB equivalent are available at \url{https://github.com/unioslo/USTB/tree/master/sandbox/OpenHRF}.
 
 \subsection*{Reference Reconstructions \& Ground Truth}
-We provide DAS beamformed images as \textbf{reference reconstructions} (not ground truth labels) using the USTB beamformer (f-number 1.75, Hanning apodization, coherent compounding).
-True ground truth is available where the scattering medium is known:
+Delay-And-Sum (DAS) beamformed images (f/1.75, Hanning apodization, coherent compounding) serve as \textbf{reference reconstructions}.
+True ground truth is available where the scattering medium is fully defined:
 \begin{itemize}[nosep]
-  \item \textbf{Simulations} (Field~II): scatterer position maps and medium definitions.
-  \item \textbf{Phantoms} (CIRS): known cyst/wire geometry, sound speed, attenuation.
-  \item \textbf{SWE/ARFI}: displacement and velocity maps from push-tracking sequences.
+  \item \textbf{Simulations}: Field~II scatterer positions and medium parameters.
+  \item \textbf{Phantoms}: manufacturer-specified geometry (CIRS Model 040GSE).
+  \item \textbf{SWE/ARFI}: shear-wave velocity and displacement maps.
 \end{itemize}
-For in-vivo data, no ground truth exists; we supply the raw channel data and processing scripts as permitted by the RFP.
+For in-vivo data, no ground truth exists; we supply raw channel data with \textbf{processing scripts for reconstruction} as permitted by the RFP (Section~6.7).
 
-\subsection*{Quality Assurance}
-\begin{itemize}[nosep]
-  \item Automated validation: finite-valued channel data, correct dimensions, non-zero energy.
-  \item Beamformed image sanity checks: peak amplitude, dynamic range $>$ 40\,dB.
-  \item Cross-verified against published results in USTB examples and publications.
-\end{itemize}
+% ------------------------------------------------------------------
+\section{Data Governance, Ethics \& Compliance}
+
+The in-vivo human datasets (cardiac and carotid) were recorded on healthy volunteers at the University of Oslo with \textbf{written informed consent} and approval from the \textbf{Regional Committee for Medical and Health Research Ethics (REK)}.
+The UFF files contain only raw ultrasound channel data (backscattered RF signals) --- no identifiable patient information is stored.
+
+Phantom and simulation data have no human-subjects implications.
 
 % ------------------------------------------------------------------
 \section{Data Rights \& Licensing}
 
-All datasets are released under the \textbf{MIT License} (code) and hosted on Zenodo under open-access terms.
+All datasets are hosted on Zenodo under open-access terms.
+Code is released under the \textbf{MIT License}.
 We confirm intent to release the converted dataset under \textbf{CC~BY~4.0} as required by OpenH-RF.
 No third-party IP encumbrances apply.
-The PICMUS datasets were originally distributed by the IEEE IUS community under open terms for benchmarking.
 
 % ------------------------------------------------------------------
 \section{Team Qualifications}
 
 \begin{itemize}[nosep]
-  \item \textbf{Ole Marius Hoel Rindal} (UiO) --- Lead developer of USTB since 2017; publications on adaptive beamforming, coherence-based imaging, and the Generalized Beamformer.
-  \item \textbf{Anders E.\ Vr\aa lstad} (UiO) --- PhD candidate; retrospective transmit correction of blocked arrays (T-USON 2026).
-  \item \textbf{Alfonso Rodriguez-Molares} (NTNU) --- Co-creator of USTB and the UFF format; generalized contrast-to-noise ratio (gCNR).
-  \item \textbf{Andreas Austeng} (UiO) --- Professor; signal processing for medical ultrasound.
+  \item \textbf{Ole Marius Hoel Rindal} --- Senior Lecturer at UiO and co-founder of Sonair~AS; lead developer of USTB since 2017; 15+ publications on adaptive beamforming, coherence-based imaging, and the Generalized Beamformer.
+  \item \textbf{Y\"ucel Karabiyik} --- Chief Engineer and Facility Manager of the DSB ultrasound/sonar laboratory at UiO; PhD in Medical Technology (NTNU, 2017); responsible for programming and maintaining the Verasonics scanner and coordinating ultrasound data acquisitions.
+  \item \textbf{Sven Peter N\"asholm} --- Professor and Head of the Digital Signal Processing and Image Analysis research group at UiO; acoustics, ultrasound signal processing, and medical imaging.
+  \item \textbf{Andreas Austeng} --- Professor and Head of the Machine Learning section at UiO; 20+ years in signal processing for medical ultrasound.
 \end{itemize}
 
 % ------------------------------------------------------------------
@@ -121,17 +227,25 @@ The PICMUS datasets were originally distributed by the IEEE IUS community under 
 \begin{table}[h!]
 \centering
 \small
-\begin{tabular}{@{}lll@{}}
+\begin{tabular}{@{}p{5.5cm}p{3.2cm}p{4.5cm}@{}}
 \toprule
 \textbf{Task} & \textbf{Period} & \textbf{Deliverable} \\
 \midrule
-Finalize conversion pipeline & May 18--25, 2026 & \texttt{convert\_ustb\_to\_openh\_rf.py} \\
-Generate reference reconstructions & May 25--Jun 1, 2026 & 53 DAS B-mode images \\
-Convert all datasets to zea HDF5 & Jun 1--7, 2026 & 53 \texttt{.hdf5} files \\
-Quality assurance \& validation & Jun 7--10, 2026 & Validation report \\
-Submit proposal + upload data & Jun 10, 2026 & Proposal + S3/GDrive delivery \\
+Finalize \texttt{zea} conversion pipeline & Completed & Scripts on GitHub \\
+Generate reference reconstructions   & Completed & 51 DAS B-mode preview images \\
+Submit proposal                      & Jun 10, 2026 & PDF via Google Form \\
+Convert all datasets to OpenH-RF HDF5 & Jun 10--30, 2026 & 51 \texttt{.hdf5} files \\
+Deliver data                          & Jun 30, 2026 & S3/GDrive upload \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{thebibliography}{1}
+\bibitem{rodriguez2017ustb}
+A.~Rodriguez-Molares, O.~M.~H.~Rindal, O.~Bernard, A.~Nair, M.~A.~L.~Bell, H.~Liebgott, A.~Austeng, and L.~L{\o}vstakken,
+``The UltraSound ToolBox,''
+in \emph{Proc.\ IEEE International Ultrasonics Symposium (IUS)}, Washington, DC, USA, 2017, pp.~1--4.
+\textsc{doi}: 10.1109/ULTSYM.2017.8092389.
+\end{thebibliography}
 
 \end{document}

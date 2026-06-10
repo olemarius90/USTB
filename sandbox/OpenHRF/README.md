@@ -37,7 +37,7 @@ run('sandbox/OpenHRF/generate_labels.m');
 
 ## Dataset source
 
-All 53 datasets are hosted on Zenodo:
+All 51 datasets are hosted on Zenodo:
 - **Record 20261898**: https://zenodo.org/records/20261898
 - **License**: MIT (code), CC BY 4.0 (data contribution to OpenH-RF)
 
