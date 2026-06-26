@@ -183,8 +183,8 @@ GROUPS: dict[str, dict] = {
             "linear (L7-4-like) and phased (P4-like) virtual probes with CPWC, FI and STA sequences. "
             "Because the scattering medium is fully defined, exact ground-truth scatterer positions "
             "and medium parameters are known. One numerical calibration acquisition "
-            "(PICMUS_numerical_calib_v2) was created by our group in a follow-up to the PICMUS "
-            "benchmark; it is included here while the other PICMUS datasets are excluded (see Known Issues)."
+            "(PICMUS_numerical_calib_v2) was created in collaboration with our group as part of the "
+            "PICMUS effort; it is included here while the other PICMUS datasets are excluded (see Known Issues)."
         ),
         "intended": (
             "Generalized reconstruction, beamformer development and validation with known "
@@ -199,15 +199,15 @@ GROUPS: dict[str, dict] = {
         "ethics": (
             "Fully synthetic data generated with the Field II simulation framework; no human or "
             "animal subjects. No personal data is present. The included numerical calibration file "
-            "was produced by our group in a follow-up to the PICMUS benchmark (IEEE IUS 2016) and is "
-            "released here under CC BY 4.0."
+            "was produced in collaboration with our group as part of the PICMUS effort (IEEE IUS 2016) "
+            "and is released here under CC BY 4.0."
         ),
         "known_issues": (
-            "PICMUS calibration: 'PICMUS_numerical_calib_v2' was created by our group in a follow-up "
-            "to the PICMUS (Plane-wave Imaging Challenge in Medical UltraSound, IEEE IUS 2016) effort, "
-            "and is therefore included here. The other PICMUS acquisitions (in-vivo carotid, "
-            "experimental and simulated resolution/contrast) are deliberately excluded from this "
-            "submission. Simulation framework: Field II (Jensen et al.)."
+            "PICMUS calibration: 'PICMUS_numerical_calib_v2' was created in collaboration with our "
+            "group as part of the PICMUS (Plane-wave Imaging Challenge in Medical UltraSound, IEEE IUS "
+            "2016) effort, and is therefore included here. The other PICMUS acquisitions (in-vivo "
+            "carotid, experimental and simulated resolution/contrast) are deliberately excluded from "
+            "this submission. Simulation framework: Field II (Jensen et al.)."
         ),
     },
     "F_motion": {
