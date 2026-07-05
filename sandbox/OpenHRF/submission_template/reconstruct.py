@@ -2,7 +2,7 @@
 
 For every ``*.hdf5`` file in the same directory as this script the raw channel
 data is beamformed with zea and the resulting B-mode image of the first frame is
-saved as ``<name>_zea_bmode.png``.
+saved as ``<name>_reconstruct_bmode.png``.
 
 The reconstruction is chosen from the transmit geometry so that each acquisition
 is beamformed the way it was acquired:
@@ -229,7 +229,7 @@ def reconstruct_file(path: Path, rf_pipeline: Pipeline, base_overrides: dict, nu
     dr = float(abs(np.array(base_overrides.get("dynamic_range", [-60, 0])).min()))
     grid_size_x = int(base_overrides.get("grid_size_x", 400))
     grid_size_z = int(base_overrides.get("grid_size_z", 600))
-    out_path = path.with_name(path.stem + "_zea_bmode.png")
+    out_path = path.with_name(path.stem + "_reconstruct_bmode.png")
     zea.visualize.set_mpl_style()
     fig, ax = plt.subplots(figsize=(5, 6))
 

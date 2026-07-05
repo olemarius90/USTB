@@ -464,13 +464,22 @@ def main():
     args = parser.parse_args()
     out_root = Path(args.output)
 
-    # One reconstruction script + pipeline + LICENCE for the whole collection, at the
-    # root. reconstruct.py is geometry-driven and recurses into every sub-dataset folder;
-    # the single CC BY 4.0 LICENCE covers the whole submission (each data card also
-    # declares `license: cc-by-4.0` in its YAML frontmatter).
-    for tmpl in ("reconstruct.py", "pipeline.yaml", "LICENCE"):
+    # Three reconstruction scripts (each with a matching pipeline.yaml) + LICENCE for the
+    # whole collection, at the root. All are geometry-driven and recurse into every
+    # sub-dataset folder; the single CC BY 4.0 LICENCE covers the whole submission (each
+    # data card also declares `license: cc-by-4.0` in its YAML frontmatter).
+    #   - reconstruct.py / pipeline.yaml           : geometry-driven Delay-And-Sum
+    #   - reconstruct_v2.py / pipeline_v2.yaml      : pressure-field-weighted DAS pipeline
+    #   - reconstruct_REFoCUS.py / pipeline_refocus.yaml : REFoCUS + pfield DAS
+    root_templates = (
+        "reconstruct.py", "pipeline.yaml",
+        "reconstruct_v2.py", "pipeline_v2.yaml",
+        "reconstruct_REFoCUS.py", "pipeline_refocus.yaml",
+        "LICENCE",
+    )
+    for tmpl in root_templates:
         shutil.copy2(TEMPLATE_DIR / tmpl, out_root / tmpl)
-    print(f"wrote root reconstruct.py + pipeline.yaml + LICENCE")
+    print("wrote root reconstruction scripts + pipeline YAMLs + LICENCE")
 
     for group in GROUPS:
         gdir = out_root / group
