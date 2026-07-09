@@ -22,7 +22,7 @@ for f = 1:length(all_filenames)
     tools.download(filename, url, data_path);
     channel_data=uff.read_object([data_path filesep filename],'/channel_data');
     channel_data.N_frames = 1; %Only reconstruct one frame
-    channel_data.sound_speed = 1460;
+    % Use sound speed stored in the UFF file (TheGB phantom ~1540 m/s).
    
     if contains(filename,'DW') || contains(filename,'FI')
         offset = eps;
