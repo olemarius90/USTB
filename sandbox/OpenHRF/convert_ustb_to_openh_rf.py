@@ -112,7 +112,6 @@ GROUPS: dict[str, dict] = {
             # Website preview uses /channel_data_speckle; /channel_data is the string-grid target.
             {"filename": "FieldII_STAI_uniform_fov.uff", "probe": "L7-4", "probe_type": "linear", "view": "STA uniform FOV (speckle)", "uff_path": "channel_data_speckle"},
             {"filename": "FieldII_P4_point_scatterers.uff", "probe": "P4-1", "probe_type": "phased", "view": "phased-array point scatterers"},
-            {"filename": "FieldII_speckle_simulation.uff", "probe": "L7-4", "probe_type": "linear", "view": "speckle"},
             {"filename": "FieldII_speckle_DMASsimulation300000pts.uff", "probe": "L7-4", "probe_type": "linear", "view": "dense speckle"},
             {"filename": "speckle_sim_FI_P4_probe_apod_1_speckle_long_many_angles.uff", "probe": "P4-1", "probe_type": "phased", "view": "blocked array (full aperture)"},
             {"filename": "speckle_sim_FI_P4_probe_apod_2_speckle_long_many_angles.uff", "probe": "P4-1", "probe_type": "phased", "view": "blocked array (1/3 aperture)"},
