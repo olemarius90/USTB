@@ -108,10 +108,7 @@ for i = 1:n
     end
     try
         if strcmp(T(i).mode, 'beamformed_only')
-            b_data = uff.read_object(uff_file, '/b_data');
-            if isempty(b_data) || isempty(b_data.data)
-                b_data = uff.read_object(uff_file, '/b_data_das');
-            end
+            b_data = read_beamformed_only_for_preview(uff_file);
         else
             b_data = dataset_preview_beamform(uff_file);
         end
@@ -193,6 +190,24 @@ for k = 1:numel(bases)
         C{end+1} = b; %#ok<AGROW>
     end
 end
+end
+
+function b_data = read_beamformed_only_for_preview(uff_file)
+%READ_BEAMFORMED_ONLY_FOR_PREVIEW  Load a stored beamformed group for catalog PNGs.
+candidates = {'/b_data_das', '/b_data', '/b_data_cf', '/b_data_tx'};
+last_err = '';
+for k = 1:numel(candidates)
+    try
+        b_data = uff.read_object(uff_file, candidates{k});
+        if ~isempty(b_data) && ~isempty(b_data.data)
+            return
+        end
+    catch ME
+        last_err = ME.message;
+    end
+end
+error('export_dataset_previews:beamformed_only', ...
+    'No beamformed group in %s (%s)', uff_file, last_err);
 end
 
 function write_gray_stub_preview(path, label)
