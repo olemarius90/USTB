@@ -37,6 +37,10 @@ invivo_scan = uff.read_object(fullfile(local_path, 'InVivoRatBrain_scan.uff'), '
 invivo_ch_data = uff.read_object(uffFiles{1}, '/channel_data');
 lambda = invivo_ch_data.lambda;
 
+% Frames
+total_frames = size(invivo_ch_data.data, 4);
+clear invivo_ch_data
+
 %% Step 2: Set up Beamforming 
 % For this example, the beamforming step uses DAS only on transmit and
 % combines the receive with the coherence-factor beamformer. The parameters
@@ -69,11 +73,12 @@ das_rx = postprocess.coherent_compounding();
 das_rx.dimension = dimension.receive;
 
 %% Step 3: Beamforming batches
-total_frames = size(invivo_ch_data.data, 4);
-batch_size = 10;
-frame_rate = 1000;
+%total_frames = size(invivo_ch_data.data, 4);
+batch_size = 20;
+frame_rate = 1000; % Must be consistent with framerate in ULM?
 
 for file = 1:nFiles
+    invivo_ch_data = uff.read_object(uffFiles{file}, '/channel_data');
     svd.input = invivo_ch_data;
     svd_ch_data_all = svd.go();
 
@@ -97,7 +102,7 @@ for file = 1:nFiles
         b_CF_batch = cf.go();
         b_CF_batch.frame_rate = frame_rate; 
     
-        % Coherent compounding (ADD)
+        % Coherent compounding 
         das_rx.input = b_tx_batch;
         b_DAS_batch = das_rx.go();
     
@@ -116,26 +121,55 @@ for file = 1:nFiles
     output_file_DAS = fullfile(beamformed_path_DAS, sprintf('beamformed_DAS_%03d.uff', file));
     uff.write_object(output_file_CF, b_CF_file, 'b_data');
     uff.write_object(output_file_DAS, b_DAS_file, 'b_data');
+
+    clear b_CF_file b_DAS_file invivo_ch_data svd_ch_data_all
 end
+
+%% Combining beamformed uff-files
+files_CF = dir(fullfile(beamformed_path_CF, '*uff'));
+files_DAS = dir(fullfile(beamformed_path_DAS, '*uff'));
+
+for i = 1:nFiles
+    filename_CF = sprintf('beamformed_CF_%03d.uff', i);
+    filename_DAS = sprintf('beamformed_DAS_%03d.uff', i);
+    b_data_part_CF = uff.read_object(fullfile(beamformed_path_CF, filename_CF), '/b_data');
+    b_data_part_DAS = uff.read_object(fullfile(beamformed_path_DAS, filename_DAS), '/b_data');
+    
+    if i==1
+        b_data_all_CF = b_data_part_CF;
+        b_data_all_DAS = b_data_part_DAS;
+    else
+        b_data_all_CF.data = cat(4, b_data_all_CF.data, b_data_part_CF.data);
+        b_data_all_DAS.data = cat(4, b_data_all_DAS.data, b_data_part_DAS.data);
+    end
+    clear b_data_part_CF b_data_part_DAS
+end
+
 
 %% Saving B-mode images
 % Save SVD filtered Coherence factor beamformed B-mode image
+b_mode_CF = uff.beamformed_data(b_data_all_CF);
+b_mode_CF.data = b_data_all_CF.data(:, :, :, 1);
+
 fig_CF = figure('Visible','off');
-b_CF_file.plot(fig_CF, 'In Vivo Rat Brain SVD-filtered CF', 60);
+b_mode_CF.plot(fig_CF, 'In Vivo Rat Brain SVD-filtered CF', 60);
 exportgraphics(gca, fullfile(figure_path, 'Beamformed_CF_SVD.png'));
 
-% % Save SVD filtered DAS beamformed B-mode image
-% fig_DAS = figure('Visible','off');
-% b_DAS_file.plot(fig_DAS, 'In Vivo Rat Brain SVD-filtered DAS', 60);
-% exportgraphics(gca, fullfile(figure_path, 'Beamformed_DAS_sliding_SVD_5.png'));
-% 
+% Save SVD filtered DAS beamformed B-mode image
+b_mode_DAS = uff.beamformed_data(b_data_all_DAS);
+b_mode_DAS.data = b_data_all_DAS.data(:, :, :, 1);
+
+fig_DAS = figure('Visible','off');
+b_mode_DAS.plot(fig_DAS, 'In Vivo Rat Brain SVD-filtered DAS', 60);
+exportgraphics(gca, fullfile(figure_path, 'Beamformed_DAS_SVD.png'));
+
+
 % % Save Maximum Intensity Projection (MIP) of SVD-filtered CF over all 40 frames
 % fig_mip = figure('Visible', 'off');
 % mip_data = uff.beamformed_data(invivo_b_CF_full);
 % mip_data.data = max(abs(invivo_b_CF_full.data), [], 4);
 % mip_data.plot(fig_mip, 'InVivo Rat Brain SVD-Filtered CF (MIP over 40 frames)', 60);
 % exportgraphics(gca, fullfile(figure_path, 'Beamformed_CF_SVD_filtered_MIP.png'));
-
 
 %% Step 4: The actual ULM part
 % With some data beamformed and configured, this step walks through a basic
@@ -178,7 +212,6 @@ u.NLocalMax = 2;
 u.max_linking_distance = 3; 
 u.min_length = 15;
 
-
 % The next two options are not parameters, but settings deciding how the
 % ULM process is performed. 
 
@@ -199,12 +232,16 @@ u.tracking = ulm.tracking.tracks;
 
 % Lastly, the data from the previous step is supplied. Lambda must be
 % supplied separately, as beamformed_data has no lambda property.
-u.lambda = invivo_ch_data.lambda;
-u.input = b_CF_file;
+u.lambda = lambda;
 u.scan = invivo_scan;
 
-% Then simply execute the ULM process
-tracks = u.go();
+% Coherence factor
+u.input = b_data_all_CF;
+tracks_CF = u.go();
+
+% Coherent compouding
+u.input = b_data_all_DAS;
+tracks_DAS = u.go();
 
 %% Step 5a: ULM Image construction
 % ULM is no fun without images.
@@ -214,13 +251,23 @@ tracks = u.go();
 
 % Synthesize a "track" image. Other image modes are available. See
 % enumeration("ulm.image_mode") for more
-ulm_img = u.create_image(tracks, "tracks");
-fig1 = figure('Visible', 'off');
+% CF
+ulm_img = u.create_image(tracks_CF, "tracks");
+fig = figure('Visible', 'off');
 imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
 xlabel("X [mm]");ylabel("z [mm]");
-title('ULM InVivo Rat Brain')
+title('ULM InVivo Rat Brain - CF')
 colormap turbo;
-exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain.png'));
+exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_CF.png'));
+
+% DAS
+ulm_img = u.create_image(tracks_DAS, "tracks");
+fig = figure('Visible', 'off');
+imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
+xlabel("X [mm]");ylabel("z [mm]");
+title('ULM InVivo Rat Brain - DAS')
+colormap turbo;
+exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_DAS.png'));
 
 
 %% Step 5b: ULM Image Construction with interpolation
@@ -233,13 +280,41 @@ exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain.png'));
 % yields a much better image.
 
 u.tracking = ulm.tracking.velocity_interpolation;
-ulm_img = u.create_image(u.go(), "tracks");
-fig2 = figure('Visible', 'off');
+
+% Coherence factor
+u.input = b_data_all_CF;
+tracks_CF = u.go();
+
+% Coherent compouding
+u.input = b_data_all_DAS;
+tracks_DAS = u.go();
+
+% CF
+ulm_img = u.create_image(tracks_CF, "tracks");
+fig = figure('Visible', 'off');
 imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
 xlabel("X [mm]");ylabel("z [mm]");
-title('ULM InVivo Rat Brain with interpolation')
+title('ULM InVivo Rat Brain Interpolated - CF')
 colormap turbo;
-exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_interpolated.png'));
+exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_CF_interpolated.png'));
+
+% DAS
+ulm_img = u.create_image(tracks_DAS, "tracks");
+fig = figure('Visible', 'off');
+imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
+xlabel("X [mm]");ylabel("z [mm]");
+title('ULM InVivo Rat Brain Interpolated - DAS')
+colormap turbo;
+exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_DAS_interpolated.png'));
+
+% 
+% ulm_img = u.create_image(u.go(), "tracks");
+% fig2 = figure('Visible', 'off');
+% imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
+% xlabel("X [mm]");ylabel("z [mm]");
+% title('ULM InVivo Rat Brain with interpolation')
+% colormap turbo;
+% exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_interpolated.png'));
 
 
 fprintf('\nSaved output images to:\n - %s\n - %s\n - %s\n - %s\n - %s\n', ...
