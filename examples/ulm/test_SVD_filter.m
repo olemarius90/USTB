@@ -45,7 +45,7 @@ invivo_scan = tools.scan_integer_upscale(invivo_scan, 2);
 das = midprocess.das();
 das.dimension = dimension.transmit;
 das.scan = invivo_scan;
-das.receive_apodization.f_number = 1.5; 
+das.receive_apodization.f_number = 1.4; 
 das.receive_apodization.window = uff.window.hamming;
 
 % CF
@@ -160,7 +160,7 @@ u.min_length = 15;
 u.algorithm = ulm.algorithm.radial;
 u.tracking = ulm.tracking.tracks;
 u.lambda = lambda;
-u.input = b_CF_file;
+u.input = b_data_all_CF;
 u.scan = invivo_scan;
 
 % Execute ULM process
