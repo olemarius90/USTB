@@ -4,8 +4,15 @@ local_path = fullfile(ustb_path(), 'data');
 RF_channeldata_path  = fullfile(local_path, 'RF_channeldata');
 
 % Beamformed folders
-beamformed_path_CF = fullfile(local_path, 'beamformed_RatBrain_CF_001.uff');
-%beamformed_path_DAS = fullfile(local_path, 'beamformed_RatBrain_DAS_001.uff');
+beamformed_path_CF = fullfile(local_path, 'beamformed_RatBrain_CF');
+if ~exist(beamformed_path_CF, 'dir')
+    mkdir(beamformed_path_CF);
+end
+
+beamformed_path_DAS = fullfile(local_path, 'beamformed_RatBrain_DAS');
+if ~exist(beamformed_path_DAS, 'dir')
+    mkdir(beamformed_path_DAS);
+end
 
 % Creating file for generated figures
 figure_path = fullfile(ustb_path(), 'examples', 'ulm', 'Figures');
@@ -13,11 +20,22 @@ if ~exist(figure_path, 'dir')
     mkdir(figure_path);
 end
 
-invivo_ch_data = uff.read_object(fullfile(RF_channeldata_path, 'InVivoRatBrain_001.uff'), '/channel_data');
+% Find all channeldata uff files
+files = dir(fullfile(RF_channeldata_path, '*.uff'));
+uffFiles = fullfile({files.folder}, {files.name});
+nFiles = numel(uffFiles);
+fprintf('Found %d UFF-files.\n', nFiles);
+
+for i = 1:nFiles
+    fprintf('%2d: %s\n', i, files(i).name);
+end
+
+% Scan
 invivo_scan = uff.read_object(fullfile(local_path, 'InVivoRatBrain_scan.uff'), '/scan');
 
-fprintf("\nInVivo Data:\nSamples: %d\nReceive: %d\nTransmits: %d\nFrames: %d\n", deal(size(invivo_ch_data.data)));
-
+% Lambda 
+invivo_ch_data = uff.read_object(uffFiles{1}, '/channel_data');
+lambda = invivo_ch_data.lambda;
 
 %% Step 2: Set up Beamforming 
 % For this example, the beamforming step uses DAS only on transmit and
@@ -34,68 +52,71 @@ invivo_scan = tools.scan_integer_upscale(invivo_scan, 2);
 % Preprocess SVD-filter
 svd = preprocess.svd_filter();
 svd.cutoff = 5;
-svd.input = invivo_ch_data;
-svd_ch_data_all = svd.go();
 
 % DAS
 das = midprocess.das();
 das.dimension = dimension.transmit;
 das.scan = invivo_scan;
-das.receive_apodization.f_number = 1.5; 
+das.receive_apodization.f_number = 1.4; 
 das.receive_apodization.window = uff.window.hamming;
 
 % CF
 cf = postprocess.coherence_factor();
 cf.dimension = dimension.receive;
 
-% Coherent Compounding (ADD)
-% das_rx = postprocess.coherent_compounding();
-% das_rx.dimension = dimension.receive;
+% Coherent Compounding 
+das_rx = postprocess.coherent_compounding();
+das_rx.dimension = dimension.receive;
 
 %% Step 3: Beamforming batches
 total_frames = size(invivo_ch_data.data, 4);
-batch_size = 40;
+batch_size = 10;
 frame_rate = 1000;
 
-for start_frame = 1:batch_size:total_frames
-    end_frame = min(start_frame + batch_size - 1, total_frames);
-    fprintf('Processing frames %d to %d of %d...\n', start_frame, end_frame, total_frames);
+for file = 1:nFiles
+    svd.input = invivo_ch_data;
+    svd_ch_data_all = svd.go();
+
+    for start_frame = 1:batch_size:total_frames
+        end_frame = min(start_frame + batch_size - 1, total_frames);
+        fprintf('Processing frames %d to %d of %d...\n', start_frame, end_frame, total_frames);
+        
+        % Slice current batch of frames
+        frame_idx = start_frame:end_frame;
     
-    % Slice current batch of frames
-    frame_idx = start_frame:end_frame;
-
-    % SVD
-    svd_ch_data_batch = uff.channel_data(svd_ch_data_all); 
-    svd_ch_data_batch.data = svd_ch_data_all.data(:,:,:,frame_idx);
-
-    % DAS
-    das.channel_data = svd_ch_data_batch;
-    b_tx_batch = das.go();
-
-    % CF
-    cf.input = b_tx_batch;
-    b_CF_batch = cf.go();
-    b_CF_batch.frame_rate = frame_rate; 
-
-    % Coherent compounding (ADD)
-    % das_rx.input = b_data_tx;
-    % invivo_b_das = das_rx.go();
-
-    if start_frame == 1
-        b_CF_file = b_CF_batch;
-        %invivo_b_das_full = invivo_b_das;
-    else
-        b_CF_file.data = cat(4, b_CF_file.data, b_CF_batch.data);
-        %invivo_b_das_full.data = cat(4, invivo_b_das_full.data, invivo_b_das.data);
+        % SVD
+        svd_ch_data_batch = uff.channel_data(svd_ch_data_all); 
+        svd_ch_data_batch.data = svd_ch_data_all.data(:,:,:,frame_idx);
+    
+        % DAS
+        das.channel_data = svd_ch_data_batch;
+        b_tx_batch = das.go();
+    
+        % CF
+        cf.input = b_tx_batch;
+        b_CF_batch = cf.go();
+        b_CF_batch.frame_rate = frame_rate; 
+    
+        % Coherent compounding (ADD)
+        das_rx.input = b_tx_batch;
+        b_DAS_batch = das_rx.go();
+    
+        if start_frame == 1
+            b_CF_file = b_CF_batch;
+            b_DAS_file = b_DAS_batch;
+        else
+            b_CF_file.data = cat(4, b_CF_file.data, b_CF_batch.data);
+            b_DAS_file.data = cat(4, b_DAS_file.data, b_DAS_batch.data);
+        end
+    
+        clear svd_ch_data_batch b_tx_batch b_CF_batch b_DAS_batch;
+   
     end
-
-    clear svd_ch_data_batch b_tx_batch b_CF_batch;
-
+    output_file_CF = fullfile(beamformed_path_CF, sprintf('beamformed_CF_%03d.uff', file));
+    output_file_DAS = fullfile(beamformed_path_DAS, sprintf('beamformed_DAS_%03d.uff', file));
+    uff.write_object(output_file_CF, b_CF_file, 'b_data');
+    uff.write_object(output_file_DAS, b_DAS_file, 'b_data');
 end
-
-uff.write_object(beamformed_path_CF, b_CF_file, 'b_data');
-% uff.write_object(beamformed_path_das, invivo_b_das_full, 'b_data');
-
 
 %% Saving B-mode images
 % Save SVD filtered Coherence factor beamformed B-mode image
