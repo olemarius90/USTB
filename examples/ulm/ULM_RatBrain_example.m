@@ -307,14 +307,6 @@ title('ULM InVivo Rat Brain Interpolated - DAS')
 colormap turbo;
 exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_DAS_interpolated.png'));
 
-% 
-% ulm_img = u.create_image(u.go(), "tracks");
-% fig2 = figure('Visible', 'off');
-% imagesc(invivo_scan.x_axis * 1e3, invivo_scan.z_axis * 1e3, ulm_img);
-% xlabel("X [mm]");ylabel("z [mm]");
-% title('ULM InVivo Rat Brain with interpolation')
-% colormap turbo;
-% exportgraphics(gca, fullfile(figure_path, 'ULM_InVivo_Rat_Brain_interpolated.png'));
 
 fprintf('\nSaved output images to:\n - %s\n - %s\n - %s\n - %s\n - %s\n - %s\n - %s\n', ...
     [figure_path '/Beamformed_DAS_SVD_filtered.png'], ...
