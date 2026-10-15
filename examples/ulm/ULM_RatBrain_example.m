@@ -329,7 +329,11 @@ function tracks = ulm_per_buffer(u, b_data, frames_per_buffer)
 % separate acquisitions. ULM keeps the numberOfParticles brightest maxima in
 % each frame, so each pixel is first divided by its RMS over time, smoothed
 % by a Gaussian of 9 pixels. Otherwise the maxima all end up in the
-% brightest region, which for DAS is the top of the image.
+% brightest region, which for DAS is the top of the image. This is the TGC
+% mask from ULMShare (code/example_script.m in
+% https://github.com/provostultrasoundlab/ulmshare, std 9 px from their
+% Table 3). ULMShare divides the data before the SVD filter by it and runs
+% the SVD again; here the envelope is divided directly.
 scan = b_data.scan;
 tracks = {};
 for start_frame = 1:frames_per_buffer:size(b_data.data, 4)
