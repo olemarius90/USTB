@@ -188,7 +188,7 @@ u = ulm.ULM();
 % The framerate specifies the framerate at which the RF data is captured.
 % This is required due its implications on linking particales across
 % frames.
-u.framerate = 500;
+u.framerate = frame_rate;
 
 % The full-width half-maximum (fwhm) parameter tunes the kernel sizes of
 % initial particle position guesses, and is configured in number of pixels.
@@ -200,15 +200,19 @@ u.fwhm = [5 5];
 % located, only the specified number of strongest points will be recorded.
 % This is per frame without heuristics, so overshooting a bit is better, as
 % this allows for a small amount of false positives in addition to true 
-% positives, instead of potentially discarding true positives. For this
-% pure example, however, we know there are a maximum of 41 particles in 
-% any given frame, meaning its a good estimate to use here.
-u.numberOfParticles = 40;
+% positives, instead of potentially discarding true positives. PALA uses 90
+% for this data set.
+u.numberOfParticles = 90;
+
+% The intensity_threshold discards localizations below this intensity. The
+% data is normalized to the local noise level before ULM (see
+% ulm_per_buffer at the end of this script), so this is an SNR.
+u.intensity_threshold = 1.5;
 
 % The last 3 parameters are a bit more advanced and not well documented in
 % the toolbox yet. For now, see Chapter 3.3 "ULM implementation in USTB" 
 % of Simon A. Bjørn's master's thesis.
-u.NLocalMax = 2;
+u.NLocalMax = 7; % 7 for fwhm = [5 5]
 u.max_linking_distance = 3; 
 u.min_length = 15;
 
@@ -237,11 +241,11 @@ u.scan = invivo_scan;
 
 % Coherence factor
 u.input = b_data_all_CF;
-tracks_CF = u.go();
+tracks_CF = ulm_per_buffer(u, b_data_all_CF, total_frames);
 
 % Coherent compouding
 u.input = b_data_all_DAS;
-tracks_DAS = u.go();
+tracks_DAS = ulm_per_buffer(u, b_data_all_DAS, total_frames);
 
 %% Step 5a: ULM Image construction
 % ULM is no fun without images.
@@ -283,11 +287,11 @@ u.tracking = ulm.tracking.velocity_interpolation;
 
 % Coherence factor
 u.input = b_data_all_CF;
-tracks_CF = u.go();
+tracks_CF = ulm_per_buffer(u, b_data_all_CF, total_frames);
 
 % Coherent compouding
 u.input = b_data_all_DAS;
-tracks_DAS = u.go();
+tracks_DAS = ulm_per_buffer(u, b_data_all_DAS, total_frames);
 
 % CF
 ulm_img = u.create_image(tracks_CF, "tracks");
@@ -318,3 +322,25 @@ fprintf('\nSaved output images to:\n - %s\n - %s\n - %s\n - %s\n - %s\n - %s\n -
 
 
 
+
+%% Local functions
+function tracks = ulm_per_buffer(u, b_data, frames_per_buffer)
+% Runs ULM on one buffer at a time, so tracks are not linked across the
+% separate acquisitions. ULM keeps the numberOfParticles brightest maxima in
+% each frame, so each pixel is first divided by its RMS over time, smoothed
+% by a Gaussian of 9 pixels. Otherwise the maxima all end up in the
+% brightest region, which for DAS is the top of the image.
+scan = b_data.scan;
+tracks = {};
+for start_frame = 1:frames_per_buffer:size(b_data.data, 4)
+    env = abs(b_data.data(:, :, :, start_frame:start_frame + frames_per_buffer - 1));
+    env = reshape(env, scan.N_z_axis, scan.N_x_axis, []);
+    env = env./imgaussfilt(sqrt(mean(env.^2, 3)), 9);
+    b_buffer = uff.beamformed_data();
+    b_buffer.scan = scan;
+    b_buffer.data = reshape(env, scan.N_pixels, 1, 1, []);
+    u.input = b_buffer;
+    buffer_tracks = u.go();
+    tracks = [tracks; buffer_tracks(:)]; %#ok<AGROW>
+end
+end
